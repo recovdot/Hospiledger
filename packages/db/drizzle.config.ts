@@ -5,6 +5,8 @@ export default defineConfig({
   schema: "./src/schema/index.ts",
   out: "./src/migrations",
   dialect: "postgresql",
+  schemaFilter: ["public"],
+  tablesFilter: ["!$supabase_*"],
   dbCredentials: {
     url: process.env.DATABASE_URL || "",
   },

@@ -14,6 +14,7 @@
   "dependencies": {
     "@hospiledger/api": "workspace:*",
     "@hospiledger/ui": "workspace:*",
+    "@supabase/supabase-js": "^2.116.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-router": "^1.170.32",
