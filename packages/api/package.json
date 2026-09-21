@@ -10,8 +10,14 @@
   },
   "dependencies": {
     "@hospiledger/db": "workspace:*",
+    "@hospiledger/shared": "workspace:*",
+    "@solana-program/memo": "^0.14.1",
+    "@solana/kit": "^8.3.0",
+    "@supabase/supabase-js": "^2.116.0",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
+    "drizzle-orm": "1.0.0-rc.4",
+    "superjson": "^2.2.6",
     "zod": "catalog:"
   },
   "devDependencies": {
