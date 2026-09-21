@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@hospiledger/api": "workspace:*",
+    "@hospiledger/shared": "workspace:*",
     "@hospiledger/ui": "workspace:*",
     "@supabase/supabase-js": "^2.116.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -23,10 +24,12 @@
     "@trpc/tanstack-react-query": "^11.18.0",
     "@varlock/vite-integration": "1.5.1",
     "lucide-react": "catalog:",
+    "motion": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "sonner": "catalog:",
+    "superjson": "^2.2.6",
     "varlock": "catalog:",
     "zod": "catalog:"
   },
