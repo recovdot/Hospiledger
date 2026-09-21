@@ -15,7 +15,7 @@ Core user value: buyers can trust the condition of a used asset without seeing i
 - **No escrow in MVP.** Do not build payment holding or settlement.
 - **Anchor hashes, not data.** Only a SHA-256 hash, the asset code, and the version go on Solana. Never put photos, personal data, prices, or contact details on-chain.
 - **The chain is the only integrity record.** Do not store the passport hash in the database. Do not add `dataHash` or `prevHash` columns. The database stores only a pointer to the transaction.
-- **Tamper-evident, not tamper-proof.** The database can still be changed. Solana anchoring lets anyone detect that a change happened. Devnet can be reset, so anchors are not permanent. UI copy must say "tercatat di Solana" and name the cluster (Devnet). Never claim mainnet, permanence, or that data cannot be changed.
+- **Tamper-evident, not tamper-proof.** The database can still be changed. Solana anchoring lets anyone detect that a change happened. Devnet can be reset, so anchors are not permanent. UI copy must say "tercatat di Solana" and never name the cluster. The MVP cluster is Devnet, fixed by this document and `SOLANA_CLUSTER`/`SOLANA_EXPLORER_CLUSTER` env values — no cluster name may be hardcoded anywhere in `apps/web` or shown in the UI. Never claim mainnet, permanence, or that data cannot be changed.
 - **AI is not the final judge.** The seller reviews and approves every passport before publish. Original AI output is never overwritten.
 - **Inspector and Verification flows are not specified yet.** Do not invent behavior for them. Ask first.
 - **Users never need a wallet or crypto.** The platform signer pays all fees.
@@ -125,6 +125,7 @@ bun run dev
 | `SUPABASE_URL` | server | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | server | Server-only. Never expose to the browser |
 | `AI_API_KEY` | server | AI provider key for inspection |
+| `AI_VISION_MODEL` | server | Vision model id, e.g. `qwen/qwen3.8-27b`. Swappable without code changes |
 | `CORS_ORIGIN` | server | Allowed frontend origin |
 | `SOLANA_CLUSTER` | server | `devnet` (default). Change here to switch cluster |
 | `SOLANA_RPC_URL` | server | RPC endpoint for the chosen cluster |
@@ -432,7 +433,7 @@ One layer: the Solana anchor. The chain is the source of truth. The database sto
 
 ## Solana Anchoring
 
-- Network: Devnet for MVP. Cluster comes from `SOLANA_CLUSTER`. No cluster name hardcoded in code or UI.
+- Network: Devnet for MVP. That is fixed by this document; the runtime cluster comes only from the `SOLANA_CLUSTER` env. No cluster name hardcoded in code or UI copy (shared Zod schemas, prompts, or UI text must not contain `Devnet`).
 - Method: Memo program transaction. Memo text format: `hpl:v1:{assetCode}:{version}:{contentHash}`.
 - Signer: one server-held keypair. Users never need a wallet or SOL.
 - Anchoring runs in a background job after `passports.publish` creates the `passport_records` row. Never inside a request.
@@ -533,7 +534,7 @@ Write a comment only when:
 - No generic button labels: "Submit", "OK", "Next". Use: "Kirim untuk inspeksi AI", "Setujui passport", "Publikasikan passport".
 - No generic notifications: "Saved!" becomes "Passport dipublikasikan."
 - Always label AI output as AI-generated and show the seller approval state.
-- Chain badge states: "Menunggu pencatatan Solana" (seller only, while publishing), "Tercatat di Solana Devnet" (seller and public, with explorer link to the stored signature), "Pencatatan gagal" (seller only, publish did not complete).
+- Chain badge states: "Menunggu pencatatan Solana" (seller only, while publishing), "Tercatat di Solana" (seller and public, with explorer link to the stored signature — the link's cluster query param comes from `VITE_SOLANA_EXPLORER_CLUSTER`), "Pencatatan gagal" (seller only, publish did not complete).
 - No "Coming soon". Ship it or hide it.
 
 ---
