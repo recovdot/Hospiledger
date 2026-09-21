@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@hospiledger/shared": "workspace:*",
     "drizzle-orm": "1.0.0-rc.4",
     "pg": "^8.23.0",
     "zod": "catalog:"
