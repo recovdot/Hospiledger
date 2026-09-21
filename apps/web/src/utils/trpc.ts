@@ -3,8 +3,10 @@ import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { toast } from "sonner";
+import superjson from "superjson";
 
 import { ENV } from "../env";
+import { supabase } from "../lib/supabase";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -25,6 +27,11 @@ export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: `${ENV.SERVER_URL.replace(/\/$/, "")}/trpc`,
+      transformer: superjson,
+      async headers() {
+        const { data } = await supabase.auth.getSession();
+        return data.session ? { authorization: `Bearer ${data.session.access_token}` } : {};
+      },
     }),
   ],
 });

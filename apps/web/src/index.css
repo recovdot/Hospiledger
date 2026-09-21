@@ -1,1 +1,5 @@
 @import "@hospiledger/ui/globals.css";
+
+html {
+  scroll-behavior: smooth;
+}
