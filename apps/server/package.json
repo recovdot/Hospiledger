@@ -16,6 +16,7 @@
     "@hono/trpc-server": "^0.4.2",
     "@hospiledger/api": "workspace:*",
     "@hospiledger/db": "workspace:*",
+    "@hospiledger/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.52",
     "@solana-program/memo": "^0.14.1",
     "@solana/kit": "^8.3.0",

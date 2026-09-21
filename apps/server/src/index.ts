@@ -5,6 +5,7 @@ import { Elysia } from "elysia";
 
 import { createContext } from "./context";
 import { ENV } from "./env.server";
+import { deps } from "./services";
 
 new Elysia()
   .use(
@@ -24,5 +25,20 @@ new Elysia()
   })
   .get("/", () => "OK")
   .listen(3000, () => {
-    console.log("Server is running on http://localhost:3000");
+    deps.logger.info("Server berjalan di http://localhost:3000");
+    void deps.storage.ensureBucket().catch((error: unknown) => {
+      deps.logger.error("Gagal menyiapkan bucket penyimpanan foto.", {
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    });
+    void deps.chain
+      .getSignerLamports()
+      .then((lamports) => {
+        deps.logger.info("Signer Solana siap.", { signer: deps.chain.getSignerAddress(), lamports });
+      })
+      .catch((error: unknown) => {
+        deps.logger.warn("Gagal membaca saldo signer Solana.", {
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      });
   });
