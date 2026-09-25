@@ -8,3 +8,4 @@ export * from "./review";
 export * from "./asset-detail";
 export * from "./passport-detail";
 export * from "./public-passport";
+export * from "./admin";

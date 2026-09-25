@@ -1,19 +1,26 @@
 import {
   publicPassportsGetByCodeInput,
   publicPassportsGetByCodeOutput,
+  publicPassportsListInput,
+  publicPassportsListOutput,
   publicPassportsVerifyInput,
   publicPassportsVerifyOutput,
 } from "@hospiledger/shared";
 import { TRPCError } from "@trpc/server";
 
 import { publicProcedure, router } from "../index";
-import { getPublicPassport, verifyPublicPassport } from "../services/public-passports";
+import { getPublicPassport, listPublicPassports, verifyPublicPassport } from "../services/public-passports";
 
 export const publicPassportsRouter = router({
   getByCode: publicProcedure
     .input(publicPassportsGetByCodeInput)
     .output(publicPassportsGetByCodeOutput)
     .query(({ ctx, input }) => getPublicPassport(ctx.db, ctx.storage, ctx.chain, input)),
+
+  list: publicProcedure
+    .input(publicPassportsListInput)
+    .output(publicPassportsListOutput)
+    .query(({ ctx, input }) => listPublicPassports(ctx.db, ctx.storage, input)),
 
   verify: publicProcedure
     .input(publicPassportsVerifyInput)

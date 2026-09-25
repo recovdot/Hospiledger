@@ -1,4 +1,5 @@
 import { publicProcedure, router } from "../index";
+import { adminRouter } from "./admin";
 import { assetsRouter } from "./assets";
 import { inspectionsRouter } from "./inspections";
 import { passportsRouter } from "./passports";
@@ -18,5 +19,6 @@ export const appRouter = router({
   passports: passportsRouter,
   reviews: reviewsRouter,
   publicPassports: publicPassportsRouter,
+  admin: adminRouter,
 });
 export type AppRouter = typeof appRouter;

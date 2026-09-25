@@ -1,10 +1,8 @@
-import { PHOTO_CONTENT_TYPES, SIGNED_URL_TTL_SECONDS } from "@hospiledger/shared";
+import { ASSET_PHOTOS_BUCKET, PHOTO_CONTENT_TYPES, SIGNED_URL_TTL_SECONDS } from "@hospiledger/shared";
 import { StorageApiError, type SupabaseClient } from "@supabase/supabase-js";
 import { TRPCError } from "@trpc/server";
 
 import type { Logger } from "../logger";
-
-export const ASSET_PHOTOS_BUCKET = "asset-photos";
 
 /** Storage namespace API. The SDK does not export the class name. */
 export type StorageNamespace = SupabaseClient["storage"];

@@ -1,3 +1,6 @@
+/** Private Supabase Storage bucket name; the client needs it to upload to a signed URL. */
+export const ASSET_PHOTOS_BUCKET = "asset-photos";
+
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 export const MAX_PHOTOS_PER_ASSET = 10;
 

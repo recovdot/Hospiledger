@@ -41,9 +41,38 @@ export const publicPassportsVerifyInput = z.object({ assetCode: assetCodeSchema 
 
 export const publicPassportsVerifyOutput = z.object({ verification: anchorVerificationSchema });
 
+export const publicPassportListItemSchema = z.object({
+  assetCode: assetCodeSchema,
+  category: z.string(),
+  brand: z.string(),
+  model: z.string(),
+  conditionScore: z.int().nullable(),
+  grade: z.string().nullable(),
+  valueEstimate: moneySchema.nullable(),
+  valueMin: moneySchema.nullable(),
+  valueMax: moneySchema.nullable(),
+  coverPhotoUrl: z.string().nullable(),
+  publishedAt: timestampSchema,
+});
+
+export const publicPassportsListInput = z.object({
+  q: z.string().max(100).optional(),
+  category: z.string().max(100).optional(),
+  limit: z.int().min(1).max(50).default(20),
+  offset: z.int().min(0).default(0),
+});
+
+export const publicPassportsListOutput = z.object({
+  items: z.array(publicPassportListItemSchema),
+  total: z.int(),
+});
+
 export type PublicPassportPhoto = z.infer<typeof publicPassportPhotoSchema>;
 export type PublicPassport = z.infer<typeof publicPassportSchema>;
 export type PublicPassportsGetByCodeInput = z.infer<typeof publicPassportsGetByCodeInput>;
 export type PublicPassportsGetByCodeOutput = z.infer<typeof publicPassportsGetByCodeOutput>;
 export type PublicPassportsVerifyInput = z.infer<typeof publicPassportsVerifyInput>;
 export type PublicPassportsVerifyOutput = z.infer<typeof publicPassportsVerifyOutput>;
+export type PublicPassportListItem = z.infer<typeof publicPassportListItemSchema>;
+export type PublicPassportsListInput = z.infer<typeof publicPassportsListInput>;
+export type PublicPassportsListOutput = z.infer<typeof publicPassportsListOutput>;
