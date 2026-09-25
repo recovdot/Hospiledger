@@ -145,12 +145,12 @@ export function RegisterForm() {
       >
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">Cek email Anda</h1>
-          <p className="text-sm text-[#6c6b6b]">
+          <p className="text-sm text-ink-muted">
             Cek email Anda untuk konfirmasi akun sebelum masuk.
           </p>
           <Link
             to="/login"
-            className="h-11 w-full rounded-full bg-[#b154f9] text-center text-base leading-[2.75rem] text-white transition-colors duration-300 hover:bg-[#a53df5]"
+            className="h-11 w-full rounded-full bg-brand text-center text-base leading-[2.75rem] text-white transition-colors duration-300 hover:bg-brand-strong"
           >
             Masuk
           </Link>
@@ -174,7 +174,7 @@ export function RegisterForm() {
         <form onSubmit={handleStep1} className="flex flex-col gap-5">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Daftar</h1>
-            <p className="mt-1 text-sm text-[#6c6b6b]">Langkah 1 dari 2 — Akun</p>
+            <p className="mt-1 text-sm text-ink-muted">Langkah 1 dari 2 — Akun</p>
           </div>
           <AuthField
             label="Email"
@@ -210,7 +210,7 @@ export function RegisterForm() {
         <form onSubmit={handleStep2} className="flex flex-col gap-5">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Daftar</h1>
-            <p className="mt-1 text-sm text-[#6c6b6b]">Langkah 2 dari 2 — Profil</p>
+            <p className="mt-1 text-sm text-ink-muted">Langkah 2 dari 2 — Profil</p>
           </div>
           <AuthField
             label="Nama lengkap"
@@ -252,12 +252,12 @@ export function RegisterForm() {
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm transition-colors duration-300",
                       selected
-                        ? "border-[#b154f9] bg-[#b154f9]/10 text-[#a53df5]"
-                        : "border-black/15 bg-transparent text-[#6c6b6b] hover:border-black/40",
+                        ? "border-brand bg-brand/10 text-brand-strong"
+                        : "border-black/15 bg-transparent text-ink-muted hover:border-black/40",
                     )}
                   >
                     <span className="font-medium">{ROLE_LABELS[option].title}</span>
-                    <span className="ml-1.5 text-[#6c6b6b]">{ROLE_LABELS[option].sub}</span>
+                    <span className="ml-1.5 text-ink-muted">{ROLE_LABELS[option].sub}</span>
                   </button>
                 );
               })}

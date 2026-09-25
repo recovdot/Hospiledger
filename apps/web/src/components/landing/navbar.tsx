@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import { motion } from "motion/react";
 
 import { ActionButton } from "./primitives";
@@ -10,12 +12,14 @@ const links = [
 ] as const;
 
 export default function Navbar() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <motion.header
       initial={{ y: -72, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="sticky top-0 z-40 bg-[#f1f1f1]/90 text-black backdrop-blur"
+      className="sticky top-0 z-40 bg-canvas/90 text-black backdrop-blur"
     >
       <div className="mx-auto flex h-[72px] max-w-5xl items-center justify-between px-5">
         <span className="font-bold tracking-tight">HospiLedger</span>
@@ -24,7 +28,7 @@ export default function Navbar() {
             <a
               key={href}
               href={href}
-              className="text-base text-[#6c6b6b] transition-colors duration-300 hover:text-black"
+              className="text-base text-ink-muted transition-colors duration-300 hover:text-black"
             >
               {label}
             </a>
@@ -40,8 +44,37 @@ export default function Navbar() {
             <span className="hidden sm:inline">Daftar sekarang</span>
             <span className="sm:hidden">Daftar</span>
           </ActionButton>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="landing-mobile-menu"
+            aria-label={menuOpen ? "Tutup menu" : "Buka menu"}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-black/15 transition-colors duration-300 hover:border-black/40 md:hidden"
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+      {menuOpen && (
+        <nav id="landing-mobile-menu" className="border-t border-black/10 px-5 pb-5 md:hidden">
+          {links.map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              onClick={() => setMenuOpen(false)}
+              className="block py-3 text-base text-ink-muted transition-colors duration-300 hover:text-black"
+            >
+              {label}
+            </a>
+          ))}
+          <div className="mt-2">
+            <ActionButton variant="outline" to="/login">
+              Masuk
+            </ActionButton>
+          </div>
+        </nav>
+      )}
     </motion.header>
   );
 }

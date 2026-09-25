@@ -48,7 +48,7 @@ function FaqItem({
       >
         {question}
         <ChevronDown
-          className={`h-6 w-6 shrink-0 text-[#6c6b6b] transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+          className={`h-6 w-6 shrink-0 text-ink-muted transition-transform duration-300 ${open ? "rotate-180" : ""}`}
         />
       </button>
       <AnimatePresence initial={false}>
@@ -60,7 +60,7 @@ function FaqItem({
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <p className="px-8 pb-7 text-[#6c6b6b] md:px-14 md:text-lg">{answer}</p>
+            <p className="px-8 pb-7 text-ink-muted md:px-14 md:text-lg">{answer}</p>
           </motion.div>
         )}
       </AnimatePresence>

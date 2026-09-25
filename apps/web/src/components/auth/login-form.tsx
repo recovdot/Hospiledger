@@ -66,7 +66,7 @@ export function LoginForm() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Masuk</h1>
-          <p className="mt-1 text-sm text-[#6c6b6b]">Masuk ke akun HospiLedger Anda.</p>
+          <p className="mt-1 text-sm text-ink-muted">Masuk ke akun HospiLedger Anda.</p>
         </div>
         <AuthField
           label="Email"

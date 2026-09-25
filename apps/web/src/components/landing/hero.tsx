@@ -53,10 +53,10 @@ export default function Hero() {
         transition={{ duration: 0.7, ease: "easeOut" }}
         className="flex items-center justify-between gap-6"
       >
-        <p className="text-sm text-[#6c6b6b] md:text-base">
+        <p className="text-sm text-ink-muted md:text-base">
           Jual peralatan hospitality dengan keyakinan.
         </p>
-        <p className="hidden max-w-xs text-right text-sm text-[#6c6b6b] md:block">
+        <p className="hidden max-w-xs text-right text-sm text-ink-muted md:block">
           Inspeksi AI &middot; Passport digital &middot; Tercatat di Solana.
         </p>
       </motion.div>
@@ -104,7 +104,7 @@ export default function Hero() {
             transition={{ duration, repeat: Infinity, ease: "easeInOut", delay }}
             className={`absolute items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 backdrop-blur-sm ${className}`}
           >
-            <Icon className="h-5 w-5 text-[#b154f9]" strokeWidth={1.5} />
+            <Icon className="h-5 w-5 text-brand" strokeWidth={1.5} />
             <span className="text-xs text-black/60 md:text-sm">{label}</span>
           </motion.div>
         ))}
@@ -120,21 +120,21 @@ export default function Hero() {
         >
           <div className="w-64 rounded-2xl bg-white p-6 shadow-sm md:w-80">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-xs text-[#6c6b6b] md:text-sm">
+              <span className="font-mono text-xs text-ink-muted md:text-sm">
                 HPL-2026-00001
               </span>
-              <span className="rounded-full bg-[#b154f9]/10 px-2.5 py-1 text-[10px] text-[#b154f9] md:text-xs">
+              <span className="rounded-full bg-brand/10 px-2.5 py-1 text-[10px] text-brand md:text-xs">
                 Tercatat di Solana
               </span>
             </div>
             <p className="mt-3 text-lg md:text-xl">Gastroline Chiller GC-400</p>
             <div className="mt-5 grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-[#6c6b6b] md:text-sm">Skor kondisi</p>
+                <p className="text-xs text-ink-muted md:text-sm">Skor kondisi</p>
                 <p className="text-lg md:text-xl">82 · Grade A-</p>
               </div>
               <div>
-                <p className="text-xs text-[#6c6b6b] md:text-sm">Estimasi nilai</p>
+                <p className="text-xs text-ink-muted md:text-sm">Estimasi nilai</p>
                 <p className="text-lg md:text-xl">Rp45.000.000</p>
               </div>
             </div>
@@ -146,16 +146,16 @@ export default function Hero() {
           transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
           className="absolute right-6 bottom-12 md:right-16 md:bottom-20"
         >
-          <div className="w-44 rounded-2xl bg-[#171717] p-5 text-white shadow-sm md:w-56">
-            <p className="text-xs text-[#a3a3a3] md:text-sm">Skor kondisi AI</p>
+          <div className="w-44 rounded-2xl bg-stage p-5 text-white shadow-sm md:w-56">
+            <p className="text-xs text-ink-muted-dark md:text-sm">Skor kondisi AI</p>
             <p className="mt-1 text-3xl md:text-4xl">82</p>
-            <div className="mt-3 h-1.5 w-28 overflow-hidden rounded-full bg-[#2e2e2e]">
+            <div className="mt-3 h-1.5 w-28 overflow-hidden rounded-full bg-stage-line">
               <motion.div
                 initial={{ width: 0 }}
                 whileInView={{ width: "82%" }}
                 viewport={{ once: true }}
                 transition={{ duration: 1.2, ease: "easeOut", delay: 0.6 }}
-                className="h-full rounded-full bg-[#b154f9]"
+                className="h-full rounded-full bg-brand"
               />
             </div>
           </div>
@@ -167,11 +167,11 @@ export default function Hero() {
           className="absolute bottom-12 left-6 hidden md:left-[44%] md:block"
         >
           <div className="rounded-2xl bg-white/90 px-5 py-4 text-sm shadow-sm backdrop-blur">
-            <p className="text-[#6c6b6b]">Laporan kerusakan</p>
+            <p className="text-ink-muted">Laporan kerusakan</p>
             <div className="mt-2 flex gap-2">
               <span className="rounded-full bg-black/5 px-3 py-1 text-xs">Rust</span>
               <span className="rounded-full bg-black/5 px-3 py-1 text-xs">Scratch</span>
-              <span className="rounded-full bg-[#b154f9]/15 px-3 py-1 text-xs text-[#b154f9]">
+              <span className="rounded-full bg-brand/15 px-3 py-1 text-xs text-brand">
                 Medium
               </span>
             </div>
@@ -194,7 +194,7 @@ export default function Hero() {
               ))}
             </div>
             <div>
-              <p className="text-xs text-[#6c6b6b]">Bagikan passport</p>
+              <p className="text-xs text-ink-muted">Bagikan passport</p>
               <p className="text-sm">via tautan & QR</p>
             </div>
           </div>

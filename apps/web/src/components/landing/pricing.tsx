@@ -44,21 +44,21 @@ export default function Pricing() {
             delay={index * 0.1}
             className={
               popular
-                ? "relative rounded-[28px] border-2 border-[#b154f9] bg-white p-10 text-black"
+                ? "relative rounded-[28px] border-2 border-brand bg-white p-10 text-black"
                 : "relative rounded-[28px] bg-white p-10 text-black"
             }
           >
             {popular && (
-              <span className="absolute -top-3.5 left-10 rounded-full bg-[#b154f9] px-4 py-1.5 text-xs text-white">
+              <span className="absolute -top-3.5 left-10 rounded-full bg-brand px-4 py-1.5 text-xs text-white">
                 Paling populer
               </span>
             )}
-            <h3 className="text-xl text-[#6c6b6b]">{name}</h3>
+            <h3 className="text-xl text-ink-muted">{name}</h3>
             <p className="mt-6 tracking-tight">
               <span className="text-4xl md:text-5xl">{price}</span>
-              {period && <span className="text-[#a3a3a3]"> {period}</span>}
+              {period && <span className="text-ink-muted-dark"> {period}</span>}
             </p>
-            <ul className="mt-8 space-y-3 text-[#6c6b6b] md:text-lg">
+            <ul className="mt-8 space-y-3 text-ink-muted md:text-lg">
               {features.map((feature) => (
                 <li key={feature} className="border-b border-black/8 pb-3 last:border-b-0">
                   {feature}

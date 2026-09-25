@@ -43,9 +43,9 @@ export default function Services() {
               key={number}
               className="grid grid-cols-[auto_1fr] items-baseline gap-6 border-b border-black/8 py-8 last:border-b-0 md:grid-cols-[120px_1fr_1fr] md:gap-10 md:py-10"
             >
-              <span className="text-xl text-[#b154f9] md:text-2xl">{number}</span>
+              <span className="text-xl text-brand md:text-2xl">{number}</span>
               <h3 className="text-2xl tracking-tight md:text-3xl">{title}</h3>
-              <p className="col-span-2 text-[#6c6b6b] md:col-span-1 md:text-lg">
+              <p className="col-span-2 text-ink-muted md:col-span-1 md:text-lg">
                 {body}
               </p>
             </div>

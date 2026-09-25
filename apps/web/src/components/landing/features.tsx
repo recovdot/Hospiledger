@@ -47,14 +47,14 @@ export default function Features() {
       <div className="mt-14 space-y-5">
         {features.map(({ icon: Icon, title, body }, index) => (
           <Reveal key={title} delay={(index % 2) * 0.08}>
-            <MotionCard className="rounded-[28px] bg-[#242424] px-8 py-8 md:px-12 md:py-10">
+            <MotionCard className="rounded-[28px] bg-stage-panel px-8 py-8 md:px-12 md:py-10">
               <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-12">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#b154f9]/15">
-                  <Icon className="h-7 w-7 text-[#b78aff]" strokeWidth={1.5} />
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-brand/15">
+                  <Icon className="h-7 w-7 text-brand-soft" strokeWidth={1.5} />
                 </div>
                 <div className="md:max-w-md">
                   <h3 className="text-2xl tracking-tight md:text-3xl">{title}</h3>
-                  <p className="mt-2 max-w-xl text-[#a3a3a3] md:text-lg">{body}</p>
+                  <p className="mt-2 max-w-xl text-ink-muted-dark md:text-lg">{body}</p>
                 </div>
               </div>
             </MotionCard>

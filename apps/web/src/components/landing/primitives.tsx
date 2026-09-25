@@ -22,7 +22,7 @@ export function ActionButton({
       to={to}
       className={cn(
         "inline-flex rounded-full px-6 py-3 text-base transition-colors duration-300",
-        variant === "primary" && "bg-[#b154f9] text-white hover:bg-[#a53df5]",
+        variant === "primary" && "bg-brand text-white hover:bg-brand-strong",
         variant === "outline" &&
           (dark
             ? "border border-white bg-transparent text-white hover:border-white/60"
@@ -50,7 +50,7 @@ export function SectionShell({
       id={id}
       className={cn(
         "py-16 md:py-24",
-        tone === "light" ? "bg-[#f1f1f1] text-black" : "bg-[#171717] text-white",
+        tone === "light" ? "bg-canvas text-black" : "bg-stage text-white",
         className,
       )}
     >
@@ -61,7 +61,7 @@ export function SectionShell({
 
 export function GradientWord({ children }: { children: ReactNode }) {
   return (
-    <em className="bg-gradient-to-r from-[#b78aff] via-[#c58cff] to-[#8ab6ff] bg-clip-text font-normal not-italic text-transparent">
+    <em className="bg-gradient-to-r from-brand-soft via-[#c58cff] to-[#8ab6ff] bg-clip-text font-normal not-italic text-transparent">
       {children}
     </em>
   );
@@ -71,7 +71,7 @@ export const headingXl =
   "text-[2.5rem] leading-[1.04] font-normal tracking-[-0.03em] md:text-[3.75rem] lg:text-[4.25rem]";
 
 export const kicker =
-  "text-sm md:text-base font-medium text-[#6c6b6b] uppercase tracking-[0.14em]";
+  "text-sm md:text-base font-medium text-ink-muted uppercase tracking-[0.14em]";
 
 const revealConfig = {
   initial: { opacity: 0, y: 32 },
@@ -165,7 +165,7 @@ export function Panel({
       id={id}
       className={cn(
         "mx-auto w-full rounded-[28px] px-8 py-14 md:px-14 md:py-20",
-        tone === "light" ? "bg-white text-black" : "bg-[#171717] text-white",
+        tone === "light" ? "bg-white text-black" : "bg-stage text-white",
         className,
       )}
     >

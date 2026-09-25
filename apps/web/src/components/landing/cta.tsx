@@ -5,17 +5,11 @@ export default function Cta() {
     <SectionShell tone="dark" className="py-20 md:py-32">
       <Reveal>
         <div className={`relative overflow-hidden rounded-[28px] ${mockPanelGradient}`}>
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 60% 55% at 50% 65%, rgba(177, 84, 249, 0.35), transparent 70%)",
-            }}
-          />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_55%_at_50%_65%,rgba(177,84,249,0.35),transparent_70%)]" />
           <div className="relative px-8 py-20 text-center text-black md:py-32">
             <h2 className={`${headingXl} mx-auto max-w-3xl`}>
               Siap menjual dengan{" "}
-              <span className="bg-gradient-to-r from-[#a53df5] to-[#7048e8] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand-strong to-[#7048e8] bg-clip-text text-transparent">
                 bukti, bukan janji
               </span>
               ?

@@ -7,13 +7,13 @@ export default function About() {
         <h2 className={`${headingXl} max-w-4xl`}>
           Pembeli tidak bisa melihat barang dari jauh.
           <br />
-          <span className="text-[#6c6b6b]">
+          <span className="text-ink-muted">
             HospiLedger mengubahnya menjadi <span className="text-black">passport digital.</span>
           </span>
         </h2>
       </Reveal>
       <Reveal delay={0.15} className="mt-14 grid gap-10 md:grid-cols-2 md:gap-16">
-        <p className="max-w-xl text-lg leading-relaxed text-[#6c6b6b] md:text-xl">
+        <p className="max-w-xl text-lg leading-relaxed text-ink-muted md:text-xl">
           Identitas, skor kondisi, laporan kerusakan, dan estimasi nilai —
           diverifikasi ulang terhadap hash yang tercatat di Solana.
         </p>

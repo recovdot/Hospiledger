@@ -16,7 +16,7 @@ export default function Promo() {
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/70 md:flex"
             >
-              <Sparkles className="h-7 w-7 text-[#b154f9]" strokeWidth={1.5} />
+              <Sparkles className="h-7 w-7 text-brand" strokeWidth={1.5} />
             </motion.div>
             <div>
               <p className="text-2xl font-medium tracking-tight md:text-3xl">
