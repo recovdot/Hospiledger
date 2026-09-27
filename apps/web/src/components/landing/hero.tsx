@@ -128,6 +128,23 @@ export default function Hero() {
               </span>
             </div>
             <p className="mt-3 text-lg md:text-xl">Gastroline Chiller GC-400</p>
+            <div className="mt-4 grid grid-cols-3 gap-1.5">
+              {["wajah", "sisi", "nameplate"].map((label, index) => (
+                <div
+                  key={label}
+                  className="relative aspect-[4/3] overflow-hidden rounded-md bg-canvas"
+                >
+                  <div
+                    className={`absolute inset-0 ${
+                      ["bg-[linear-gradient(135deg,#d9d4ef,#bcd9ec)]", "bg-[linear-gradient(160deg,#c4dff0,#cfeedd)]", "bg-[linear-gradient(150deg,#e6d9ee,#d3dcf0)]"][index]
+                    }`}
+                  />
+                  <span className="absolute bottom-1 left-1.5 text-[9px] text-black/40">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
             <div className="mt-5 grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-ink-muted md:text-sm">Skor kondisi</p>
@@ -137,6 +154,11 @@ export default function Hero() {
                 <p className="text-xs text-ink-muted md:text-sm">Estimasi nilai</p>
                 <p className="text-lg md:text-xl">Rp45.000.000</p>
               </div>
+            </div>
+            <div className="mt-4 border-t border-black/8 pt-3">
+              <p className="font-mono text-[10px] text-black/40 md:text-[11px]">
+                hash: 9f2c…4e1b
+              </p>
             </div>
           </div>
         </motion.div>
@@ -169,10 +191,10 @@ export default function Hero() {
           <div className="rounded-2xl bg-white/90 px-5 py-4 text-sm shadow-sm backdrop-blur">
             <p className="text-ink-muted">Laporan kerusakan</p>
             <div className="mt-2 flex gap-2">
-              <span className="rounded-full bg-black/5 px-3 py-1 text-xs">Rust</span>
-              <span className="rounded-full bg-black/5 px-3 py-1 text-xs">Scratch</span>
+              <span className="rounded-full bg-black/5 px-3 py-1 text-xs">Karat</span>
+              <span className="rounded-full bg-black/5 px-3 py-1 text-xs">Baret</span>
               <span className="rounded-full bg-brand/15 px-3 py-1 text-xs text-brand">
-                Medium
+                Sedang
               </span>
             </div>
           </div>

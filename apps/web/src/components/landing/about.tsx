@@ -1,4 +1,4 @@
-import { Reveal, SectionShell, headingXl } from "./primitives";
+import { GradientWord, Reveal, SectionShell, headingXl } from "./primitives";
 
 export default function About() {
   return (
@@ -8,7 +8,7 @@ export default function About() {
           Pembeli tidak bisa melihat barang dari jauh.
           <br />
           <span className="text-ink-muted">
-            HospiLedger mengubahnya menjadi <span className="text-black">passport digital.</span>
+            HospiLedger mengubahnya menjadi <GradientWord>passport digital.</GradientWord>
           </span>
         </h2>
       </Reveal>

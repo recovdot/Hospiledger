@@ -19,6 +19,8 @@ export type AssetPhotoStorage = {
   createReadUrl(storagePath: string): Promise<string>;
   /** Reads stored bytes for hashing and inspection. Returns `null` when the object does not exist. */
   readObject(storagePath: string): Promise<Uint8Array | null>;
+  /** Copies verified legacy bytes to a fresh immutable object path. */
+  uploadObject(storagePath: string, bytes: Uint8Array, contentType: string): Promise<void>;
   /** Deletes a stored photo; missing objects are ignored. */
   removeObject(storagePath: string): Promise<void>;
 };
@@ -64,7 +66,7 @@ export function createAssetPhotoStorage(
     },
 
     async createUploadUrl(storagePath) {
-      const signed = await bucket.createSignedUploadUrl(storagePath, { upsert: true });
+      const signed = await bucket.createSignedUploadUrl(storagePath, { upsert: false });
       if (signed.error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -95,6 +97,16 @@ export function createAssetPhotoStorage(
         });
       }
       return new Uint8Array(await downloaded.data.arrayBuffer());
+    },
+
+    async uploadObject(storagePath, bytes, contentType) {
+      const uploaded = await bucket.upload(storagePath, bytes, { contentType, upsert: false });
+      if (uploaded.error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Gagal menyalin foto bukti: ${uploaded.error.message}`,
+        });
+      }
     },
 
     async removeObject(storagePath) {

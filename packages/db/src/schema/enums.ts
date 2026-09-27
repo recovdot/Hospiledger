@@ -16,3 +16,10 @@ export const damageSeverity = pgEnum("damage_severity", DAMAGE_SEVERITIES);
 export const passportStatus = pgEnum("passport_status", PASSPORT_STATUSES);
 export const reviewDecision = pgEnum("review_decision", REVIEW_DECISIONS);
 export const chainStatus = pgEnum("chain_status", CHAIN_STATUSES);
+export const backendJobKind = pgEnum("backend_job_kind", ["inspection", "anchor", "delete_photo"]);
+export const backendJobStatus = pgEnum("backend_job_status", [
+  "pending",
+  "running",
+  "complete",
+  "failed",
+]);

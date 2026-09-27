@@ -47,11 +47,15 @@ type RecordedCall = { method: string; parameters: readonly unknown[] };
 
 type FakeBehaviour = {
   lamports: number;
+  blockHeight: bigint;
   confirmedStatus: ChainSignatureStatus | null;
   historyStatus: ChainSignatureStatus | null;
   transaction: ChainTransaction | null;
   statusesError: Error | null;
   transactionError: Error | null;
+  sendError: Error | null;
+  confirmationAfterSend: boolean;
+  confirmationTransaction?: ChainTransaction | null;
 };
 
 const CONFIRMED_STATUS: ChainSignatureStatus = {
@@ -74,14 +78,19 @@ function createFakeChainRpc(behaviour: Partial<FakeBehaviour> = {}): {
 } {
   const settings: FakeBehaviour = {
     lamports: 10_000_000,
+    blockHeight: 400n,
     confirmedStatus: CONFIRMED_STATUS,
     historyStatus: null,
     transaction: null,
     statusesError: null,
     transactionError: null,
+    sendError: null,
+    confirmationAfterSend: true,
     ...behaviour,
   };
   const calls: RecordedCall[] = [];
+  let sent = false;
+  let queriedSignature = SENT_SIGNATURE;
   const rpc: ChainRpc = {
     getLatestBlockhash: (config) => {
       calls.push({ method: "getLatestBlockhash", parameters: [config] });
@@ -92,16 +101,29 @@ function createFakeChainRpc(behaviour: Partial<FakeBehaviour> = {}): {
         }),
       };
     },
+    getBlockHeight: (config) => {
+      calls.push({ method: "getBlockHeight", parameters: [config] });
+      return { send: async () => settings.blockHeight };
+    },
     sendTransaction: (transaction, config) => {
       calls.push({ method: "sendTransaction", parameters: [transaction, config] });
-      return { send: async () => signature(SENT_SIGNATURE) };
+      return {
+        send: async () => {
+          sent = true;
+          if (settings.sendError !== null) throw settings.sendError;
+          return signature(queriedSignature);
+        },
+      };
     },
     getSignatureStatuses: (signatures, config) => {
       calls.push({ method: "getSignatureStatuses", parameters: [signatures, config] });
+      queriedSignature = String(signatures[0]);
       return {
         send: async () => {
           if (settings.statusesError !== null) throw settings.statusesError;
-          const found = config?.searchTransactionHistory === true ? settings.historyStatus : settings.confirmedStatus;
+          const found = config?.searchTransactionHistory === true
+            ? sent && settings.confirmationAfterSend ? settings.confirmedStatus : settings.historyStatus
+            : settings.confirmedStatus;
           return { context: { slot: 1n }, value: [found] };
         },
       };
@@ -111,7 +133,11 @@ function createFakeChainRpc(behaviour: Partial<FakeBehaviour> = {}): {
       return {
         send: async () => {
           if (settings.transactionError !== null) throw settings.transactionError;
-          return settings.transaction;
+          return sent && settings.confirmationAfterSend
+            ? settings.confirmationTransaction === undefined
+              ? settings.transaction ?? storedTransaction([{ programId: MEMO_PROGRAM_ADDRESS, parsed: MEMO }])
+              : settings.confirmationTransaction
+            : settings.transaction;
         },
       };
     },
@@ -191,62 +217,144 @@ function storedTransaction(instructions: ChainTransaction["transaction"]["messag
   };
 }
 
-test("anchors the memo: balance first, blockhash, base64 send, then poll for the confirmed slot", async () => {
+test("prepares without broadcasting, then signs identical bytes and confirms the memo", async () => {
   const { client, calls, signer } = await createClientUnderTest();
-
-  const anchor = await client.anchorMemo(MEMO);
-
-  expect(calls.map((call) => call.method)).toEqual([
-    "getBalance",
-    "getLatestBlockhash",
-    "sendTransaction",
-    "getSignatureStatuses",
-  ]);
+  const prepared = await client.prepareMemo(MEMO);
+  expect(prepared).toEqual({
+    txSignature: expect.any(String),
+    blockhash: BLOCKHASH,
+    lastValidBlockHeight: 500,
+    chainCluster: "devnet",
+  });
+  expect(calls.map((call) => call.method)).toEqual(["getBalance", "getLatestBlockhash"]);
   expect(calls[0]?.parameters[0]).toBe(signer.address);
-  expect(calls[1]?.parameters[0]).toEqual({ commitment: "confirmed" });
-  expect(calls[2]?.parameters[1]).toEqual({
+
+  const anchor = await client.broadcastPreparedMemo(MEMO, prepared);
+  expect(anchor).toEqual({ txSignature: prepared.txSignature, slot: 99, chainCluster: "devnet" });
+  expect(calls.find((call) => call.method === "getBlockHeight")?.parameters).toEqual([{ commitment: "confirmed" }]);
+  expect(calls.find((call) => call.method === "sendTransaction")?.parameters[1]).toEqual({
     encoding: "base64",
     skipPreflight: false,
     preflightCommitment: "confirmed",
     maxRetries: 3n,
   });
-
   const wireTransaction = readSentWireTransaction(calls);
-  const wireText = new TextDecoder().decode(Buffer.from(wireTransaction, "base64"));
-  expect(wireText).toContain(MEMO);
+  expect(new TextDecoder().decode(Buffer.from(wireTransaction, "base64"))).toContain(MEMO);
+  expect(readPolledSignatures(calls)).toEqual([prepared.txSignature, prepared.txSignature]);
 
-  expect(anchor.slot).toBe(12345);
-  expect(anchor.chainCluster).toBe("devnet");
-  expect(readPolledSignatures(calls)).toEqual([anchor.txSignature]);
+  await client.broadcastPreparedMemo(MEMO, prepared);
+  const sends = calls.filter((call) => call.method === "sendTransaction");
+  expect(sends).toHaveLength(1);
 });
 
-test("treats a transaction that never confirms as a retryable failure", async () => {
+test("retries the identical transaction after a timeout without preparing a new blockhash", async () => {
   const { client, calls } = await createClientUnderTest(
-    { confirmedStatus: PROCESSED_STATUS },
+    { confirmedStatus: PROCESSED_STATUS, confirmationAfterSend: false },
     { confirmTimeoutMs: 0, confirmPollMs: 1 },
   );
-
-  const error = await captureAnchorError(() => client.anchorMemo(MEMO));
-
-  expect(error.retryable).toBe(true);
-  expect(error.message).toContain("Konfirmasi transaksi anchor");
-  expect(calls.filter((call) => call.method === "getSignatureStatuses")).toHaveLength(1);
+  const prepared = await client.prepareMemo(MEMO);
+  const first = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
+  const second = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
+  expect(first.retryable).toBe(true);
+  expect(second.retryable).toBe(true);
+  expect(calls.filter((call) => call.method === "sendTransaction").map((call) => call.parameters[0]))
+    .toEqual([readSentWireTransaction(calls), readSentWireTransaction(calls)]);
+  expect(calls.filter((call) => call.method === "getLatestBlockhash")).toHaveLength(1);
 });
 
-test("treats an on-chain failure as a non-retryable failure naming the error", async () => {
+test("fails closed on an expired candidate absent from RPC history", async () => {
+  const { client, calls } = await createClientUnderTest({ blockHeight: 501n });
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
+  expect(error.retryable).toBe(false);
+  expect(calls.filter((call) => call.method === "sendTransaction")).toHaveLength(0);
+});
+
+test("rejects a changed memo without network I/O or a new candidate", async () => {
+  const { client, calls } = await createClientUnderTest();
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() => client.broadcastPreparedMemo(`${MEMO} changed`, prepared));
+  expect(error.retryable).toBe(false);
+  expect(calls.filter((call) => call.method === "getSignatureStatuses")).toHaveLength(0);
+});
+
+test("fails closed when the persisted signature cannot be reproduced", async () => {
+  const { client, calls } = await createClientUnderTest();
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() =>
+    client.broadcastPreparedMemo(MEMO, { ...prepared, txSignature: SENT_SIGNATURE }),
+  );
+  expect(error.retryable).toBe(false);
+  expect(calls.filter((call) => call.method === "sendTransaction")).toHaveLength(0);
+});
+
+test("reconciles an already confirmed expired candidate without resending", async () => {
+  const { client, calls } = await createClientUnderTest({
+    blockHeight: 501n,
+    historyStatus: CONFIRMED_STATUS,
+    transaction: storedTransaction([{ programId: MEMO_PROGRAM_ADDRESS, parsed: MEMO }]),
+  });
+  const prepared = await client.prepareMemo(MEMO);
+  expect(await client.broadcastPreparedMemo(MEMO, prepared)).toEqual({
+    txSignature: prepared.txSignature,
+    slot: 99,
+    chainCluster: "devnet",
+  });
+  expect(calls.filter((call) => call.method === "sendTransaction")).toHaveLength(0);
+});
+
+test("recovers an ambiguous RPC send by inspecting the persisted candidate", async () => {
+  const { client, calls } = await createClientUnderTest({ sendError: new Error("RPC timed out") });
+  const prepared = await client.prepareMemo(MEMO);
+  const confirmed = await client.broadcastPreparedMemo(MEMO, prepared);
+  expect(confirmed.txSignature).toBe(prepared.txSignature);
+  expect(calls.filter((call) => call.method === "sendTransaction")).toHaveLength(1);
+});
+
+test("keeps an ambiguous send retryable when the history RPC cannot be reached", async () => {
+  const { client, calls } = await createClientUnderTest({ statusesError: new Error("RPC unavailable") });
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
+  expect(error.retryable).toBe(true);
+  expect(calls.filter((call) => call.method === "sendTransaction")).toHaveLength(0);
+});
+
+test("rejects an on-chain failure even when its transaction body is unreadable", async () => {
   const { client } = await createClientUnderTest({
-    confirmedStatus: {
-      slot: 12345n,
+    historyStatus: {
+      ...CONFIRMED_STATUS,
       err: { InstructionError: [0, { Custom: 1 }] },
-      confirmationStatus: "confirmed",
-      confirmations: null,
     },
   });
-
-  const error = await captureAnchorError(() => client.anchorMemo(MEMO));
-
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
   expect(error.retryable).toBe(false);
   expect(error.message).toContain("InstructionError");
+});
+
+test("does not confirm a known signature with an unreadable transaction body", async () => {
+  const { client, calls } = await createClientUnderTest({ historyStatus: CONFIRMED_STATUS });
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
+  expect(error.retryable).toBe(true);
+  expect(calls.filter((call) => call.method === "sendTransaction")).toHaveLength(0);
+});
+
+test("rejects a confirmed memo that differs from the approved snapshot", async () => {
+  const { client } = await createClientUnderTest({
+    historyStatus: CONFIRMED_STATUS,
+    transaction: storedTransaction([{ programId: MEMO_PROGRAM_ADDRESS, parsed: "wrong memo" }]),
+  });
+  const prepared = await client.prepareMemo(MEMO);
+  const error = await captureAnchorError(() => client.broadcastPreparedMemo(MEMO, prepared));
+  expect(error.retryable).toBe(false);
+});
+
+test("refuses an anchor when the signer cannot pay the transaction fee", async () => {
+  const { client, calls } = await createClientUnderTest({ lamports: 1_000 });
+  const error = await captureAnchorError(() => client.prepareMemo(MEMO));
+  expect(error.retryable).toBe(true);
+  expect(calls.filter((call) => call.method === "getLatestBlockhash")).toHaveLength(0);
 });
 
 test("warns instead of failing when the signer balance is below the safe threshold", async () => {
@@ -288,6 +396,34 @@ test("reports an unconfirmed but known transaction as pending", async () => {
   expect(read).toEqual({ kind: "pending" });
   expect(calls.filter((call) => call.method === "getSignatureStatuses")).toHaveLength(1);
 });
+
+test("reports a confirmed signature with no transaction body as unreachable", async () => {
+  const { client } = await createClientUnderTest({ confirmedStatus: CONFIRMED_STATUS });
+  expect((await client.readMemo(SENT_SIGNATURE)).kind).toBe("unreachable");
+});
+
+test("reports an errored signature without a body as not_found", async () => {
+  const { client } = await createClientUnderTest({
+    confirmedStatus: { ...CONFIRMED_STATUS, err: { InstructionError: [0, { Custom: 1 }] } },
+  });
+  expect(await client.readMemo(SENT_SIGNATURE)).toEqual({ kind: "not_found" });
+});
+
+test("searches history when the recent status cache misses a confirmed unreadable transaction", async () => {
+  const { client } = await createClientUnderTest({
+    confirmedStatus: null,
+    historyStatus: CONFIRMED_STATUS,
+  });
+  expect((await client.readMemo(SENT_SIGNATURE)).kind).toBe("unreachable");
+});
+test("keeps an errored confirmed signature from appearing as a match", async () => {
+  const { client } = await createClientUnderTest({
+    confirmedStatus: { ...CONFIRMED_STATUS, err: { InstructionError: [0, { Custom: 1 }] } },
+    transaction: storedTransaction([{ programId: MEMO_PROGRAM_ADDRESS, parsed: MEMO }]),
+  });
+  expect(await client.readMemo(SENT_SIGNATURE)).toEqual({ kind: "not_found" });
+});
+
 
 test("reports an RPC failure as unreachable instead of claiming a verdict", async () => {
   const { client } = await createClientUnderTest({ statusesError: new Error("429 Too Many Requests") });

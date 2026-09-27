@@ -76,11 +76,6 @@ function assessmentReply(overrides: JsonObject = {}): JsonObject {
     completeness: 80,
     overall: 72,
     grade: "B",
-    valueEstimate: 6_000_000,
-    valueMin: 5_000_000,
-    valueMax: 7_500_000,
-    valueConfidence: 0.6,
-    valueBasis: "Perkiraan konservatif dari merek, umur, dan hasil inspeksi; tanpa data pasar.",
     ...overrides,
   };
 }
@@ -180,6 +175,24 @@ describe("createInspectionAi", () => {
     expect(walkStrictObjects(callAt(calls, 2).body.response_format.json_schema?.schema)).toBe(1);
   });
 
+  test("reports progress after each recognition batch and before the assessment", async () => {
+    captureFetch([
+      { content: recognitionReply() },
+      { content: recognitionReply() },
+      { content: assessmentReply() },
+    ]);
+    const progress: unknown[] = [];
+    await createInspectionAi(testConfig, silentLogger).inspect(request, {
+      onProgress: (entry) => { progress.push(entry); },
+    });
+
+    expect(progress).toEqual([
+      { stage: "recognition", done: 1, total: 3 },
+      { stage: "recognition", done: 2, total: 3 },
+      { stage: "assessment", done: 2, total: 3 },
+    ]);
+  });
+
   test("carries the merged damage kinds and the photo notes into the aggregation call", async () => {
     const calls = captureFetch([
       {
@@ -207,7 +220,7 @@ describe("createInspectionAi", () => {
     expect(text).toContain("Nameplate terbaca.");
   });
 
-  test("maps the merged stages into the outcome without inventing values", async () => {
+  test("maps merged stages into an outcome with raw AI evidence and no unsupported valuation", async () => {
     const calls = captureFetch([
       {
         content: recognitionReply({
@@ -239,18 +252,67 @@ describe("createInspectionAi", () => {
       { kind: "rust", severity: "medium", area: "kaki", note: "karat ringan" },
     ]);
     expect(outcome.damageSeverity).toBe("medium");
-    expect(outcome.conditionScore).toBe(72);
-    expect(outcome.grade).toBe("B");
-    expect(outcome.valueEstimate).toBe(6_000_000);
-    expect(outcome.valueMin).toBe(5_000_000);
-    expect(outcome.valueMax).toBe(7_500_000);
+    expect(outcome.scoreComponents).toEqual({ physical: 70, visual: 65, completeness: 80, overall: 72, grade: "B" });
+    expect(outcome.rawOutput.recognition).toHaveLength(2);
+    expect(outcome.rawOutput.assessment).toEqual({
+      damageSeverity: "medium", physical: 70, visual: 65, completeness: 80, overall: 72, grade: "B",
+    });
+    expect([outcome.valueEstimate, outcome.valueMin, outcome.valueMax]).toEqual([null, null, null]);
+  });
+
+  test("prefers a complete identity over a more confident partial reading", async () => {
+    captureFetch([
+      { content: recognitionReply({ detectedBrand: "Alpha", detectedModel: null, confidence: 0.99 }) },
+      { content: recognitionReply({ detectedBrand: "Beta", detectedModel: "B2", confidence: 0.65 }) },
+      { content: assessmentReply() },
+    ]);
+    const outcome = await createInspectionAi(testConfig, silentLogger).inspect(request);
+
+    expect([outcome.detectedBrand, outcome.detectedModel, outcome.confidence]).toEqual(["Beta", "B2", 0.65]);
+  });
+
+  test("picks the highest-confidence complete pair without mixing batches", async () => {
+    captureFetch([
+      { content: recognitionReply({ detectedBrand: "Alpha", detectedModel: "A1", confidence: 0.6 }) },
+      { content: recognitionReply({ detectedBrand: "Beta", detectedModel: "B2", confidence: 0.9 }) },
+      { content: assessmentReply() },
+    ]);
+    const outcome = await createInspectionAi(testConfig, silentLogger).inspect(request);
+
+    expect([outcome.detectedBrand, outcome.detectedModel, outcome.confidence]).toEqual(["Beta", "B2", 0.9]);
+  });
+
+  test("does not combine partial identities when no complete pair exists", async () => {
+    captureFetch([
+      { content: recognitionReply({ detectedBrand: "Alpha", detectedModel: null, confidence: 0.6 }) },
+      { content: recognitionReply({ detectedBrand: null, detectedModel: "B2", confidence: 0.9 }) },
+      { content: assessmentReply() },
+    ]);
+    const outcome = await createInspectionAi(testConfig, silentLogger).inspect(request);
+
+    expect([outcome.detectedBrand, outcome.detectedModel, outcome.confidence]).toEqual([null, "B2", 0.9]);
+  });
+
+  test("rejects assessment replies with unsupported valuation fields", async () => {
+    const calls = captureFetch([
+      { content: recognitionReply() },
+      { content: recognitionReply() },
+      { content: { ...assessmentReply(), valueEstimate: 6_000_000 } },
+      { content: { ...assessmentReply(), valueEstimate: 6_000_000 } },
+    ]);
+    const failure = await thrownBy(createInspectionAi(testConfig, silentLogger).inspect(request));
+
+    expect(failure).toBeInstanceOf(AiInspectionError);
+    expect((failure as AiInspectionError).retryable).toBe(false);
+    expect((failure as AiInspectionError).message).toBe("Hasil inspeksi AI tidak lolos validasi pada tahap penilaian kondisi.");
+    expect(calls).toHaveLength(4);
   });
 
   test("keeps unreadable nameplate fields null end to end", async () => {
     captureFetch([
       { content: recognitionReply({ detectedBrand: null, detectedModel: null, confidence: null }) },
       { content: recognitionReply({ detectedBrand: null, detectedModel: null, confidence: null }) },
-      { content: assessmentReply({ damageSeverity: null, valueEstimate: null, valueMin: null, valueMax: null }) },
+      { content: assessmentReply({ damageSeverity: null }) },
     ]);
     const outcome = await createInspectionAi(testConfig, silentLogger).inspect(request);
 
@@ -283,6 +345,7 @@ describe("createInspectionAi", () => {
     const calls = captureFetch([{ content: { detectedBrand: "Acme" } }, { content: { detectedBrand: "Acme" } }]);
     const failure = await thrownBy(createInspectionAi(testConfig, silentLogger).inspect(request));
 
+    expect((failure as AiInspectionError).retryable).toBe(false);
     expect(failure).toBeInstanceOf(AiInspectionError);
     expect(failure instanceof Error ? failure.message : "").toBe(
       "Hasil inspeksi AI tidak lolos validasi pada tahap pengenalan peralatan.",
@@ -298,12 +361,23 @@ describe("createInspectionAi", () => {
       { content: { damageSeverity: "medium" } },
     ]);
     const failure = await thrownBy(createInspectionAi(testConfig, silentLogger).inspect(request));
+    expect((failure as AiInspectionError).retryable).toBe(false);
 
     expect(failure).toBeInstanceOf(AiInspectionError);
     expect(failure instanceof Error ? failure.message : "").toBe(
-      "Hasil inspeksi AI tidak lolos validasi pada tahap penilaian kondisi dan estimasi nilai.",
+      "Hasil inspeksi AI tidak lolos validasi pada tahap penilaian kondisi.",
     );
     expect(calls).toHaveLength(4);
+  });
+
+  test("marks provider failures retryable without exposing provider details to the seller", async () => {
+    const calls = captureFetch([{ status: 403, errorMessage: "private provider credential" }]);
+    const failure = await thrownBy(createInspectionAi(testConfig, silentLogger).inspect(request));
+
+    expect(failure).toBeInstanceOf(AiInspectionError);
+    expect((failure as AiInspectionError).retryable).toBe(true);
+    expect((failure as AiInspectionError).message).toBe("Layanan inspeksi AI gagal pada tahap pengenalan peralatan.");
+    expect(calls).toHaveLength(1);
   });
 
   test("requires at least one evidence photo before calling the provider", async () => {
@@ -311,6 +385,7 @@ describe("createInspectionAi", () => {
     const failure = await thrownBy(createInspectionAi(testConfig, silentLogger).inspect({ ...request, photos: [] }));
 
     expect(failure).toBeInstanceOf(AiInspectionError);
+    expect((failure as AiInspectionError).retryable).toBe(false);
     expect(calls).toHaveLength(0);
   });
 });

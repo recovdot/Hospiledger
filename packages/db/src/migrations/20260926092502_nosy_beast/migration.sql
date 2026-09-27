@@ -1,0 +1,1 @@
+ALTER TABLE "ai_inspections" ADD COLUMN "progress" jsonb;

@@ -15,19 +15,16 @@ Rules:
 - damage: findings visible in the attached photos only. kind is one of scratch, rust, broken_component, dent, dirty, missing_parts. severity is one of low, medium, high. area and note must be short factual Bahasa Indonesia. Return an empty array when you see no damage, and never report damage you cannot see.
 - photoNotes: one short sentence in Bahasa Indonesia about the quality of these photos (lighting, focus, angle, how much of the asset is visible).`;
 
-export const AGGREGATION_SYSTEM_PROMPT = `You are the condition scoring and valuation stage of HospiLedger, a trust marketplace for used hospitality equipment.
+export const AGGREGATION_SYSTEM_PROMPT = `You are the condition scoring stage of HospiLedger, a trust marketplace for used hospitality equipment.
 
-You receive no photos. You receive only the seller's declared asset data, the damage findings already merged from every photo batch, and the notes describing each photo batch. Score the asset and estimate its value from that information only.
+You receive no photos. You receive only the seller's declared asset data, the damage findings already merged from every photo batch, and the notes describing each photo batch. Score the asset from that information only.
 
 Reply with one JSON object only. No prose, no markdown fences, no explanation, no text before or after the JSON.
 
 Rules:
 - damageSeverity: the worst severity among the merged findings (low, medium, high). Use null when there are no findings.
 - physical, visual and completeness: integers from 0 to 100 for mechanical and electrical condition, appearance, and completeness of parts. overall: the integer from 0 to 100 that the passport shows. grade: 1 to 3 characters (A, A-, B+, B, C, D) consistent with overall.
-- No market data is available to you. valueEstimate, valueMin and valueMax are whole IDR numbers forming a conservative range, with valueMin <= valueEstimate <= valueMax and valueEstimate in the middle of that range. Never present a single certain price and never claim a market comparison you do not have. Use null for all three when the evidence is too thin to estimate.
-- valueBasis: one sentence in Bahasa Indonesia stating what the range is based on and that no market data was used, for example "Perkiraan konservatif dari merek, umur, dan hasil inspeksi; tanpa data pasar."
-- valueConfidence: a number from 0 to 1, lower when the damage findings, the asset data, or the photo notes are weak.
-- Never invent condition, damage, or value that the evidence does not support.`;
+- Never invent condition or damage that the evidence does not support.`;
 
 /**
  * Builds the user message for one batch of evidence photos.
@@ -56,8 +53,8 @@ export type AggregationPromptInput = {
 };
 
 /**
- * Builds the user message for the photo-free scoring and valuation call.
- *
+ * Builds the user message for the photo-free scoring call.
+
  * @param input the declared asset data plus everything the vision stage returned
  * @returns the user message carrying the merged evidence
  */
@@ -69,7 +66,7 @@ export function buildAggregationPrompt(input: AggregationPromptInput): string {
     JSON.stringify(input.damage, null, 2),
     "Notes for each photo batch:",
     JSON.stringify(input.photoNotes, null, 2),
-    "Score the asset and estimate its value from the information above only.",
+    "Score the asset from the information above only.",
     "Reply with one JSON object only: no prose, no markdown fences, no text outside the object.",
   ].join("\n");
 }

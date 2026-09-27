@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import { trpc } from "@/utils/trpc";
+import { GoogleButton } from "./google-button";
 import { AuthField, AuthLayout, ErrorBanner, SubmitButton, isProfileMissing, localizeAuthError, trpcErrorCode } from "./auth-field";
 
-export function LoginForm() {
+const DemoLoginButton = import.meta.env.DEV
+  ? lazy(() => import("./demo-login").then(({ DemoLoginButton }) => ({ default: DemoLoginButton })))
+  : null;
+
+export function LoginForm({ authError }: { authError?: string } = {}) {
   const router = useRouter();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
-  const [banner, setBanner] = useState<string | undefined>();
+  const [banner, setBanner] = useState<string | undefined>(authError);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -57,7 +62,7 @@ export function LoginForm() {
       footer={
         <>
           Belum punya akun?{" "}
-          <Link to="/register" className="font-medium text-black underline underline-offset-4">
+          <Link to="/register" className="font-medium text-foreground underline underline-offset-4">
             Daftar
           </Link>
         </>
@@ -69,6 +74,7 @@ export function LoginForm() {
           <p className="mt-1 text-sm text-ink-muted">Masuk ke akun HospiLedger Anda.</p>
         </div>
         <AuthField
+          id="login-email"
           label="Email"
           type="email"
           value={email}
@@ -78,6 +84,7 @@ export function LoginForm() {
           autoComplete="email"
         />
         <AuthField
+          id="login-password"
           label="Kata sandi"
           type="password"
           value={password}
@@ -88,6 +95,20 @@ export function LoginForm() {
         />
         {banner && <ErrorBanner message={banner} />}
         <SubmitButton submitting={submitting}>Masuk</SubmitButton>
+        <div className="flex items-center gap-4 text-sm text-ink-muted">
+          <span className="h-px flex-1 bg-border" />
+          atau
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton submitting={submitting} />
+        {DemoLoginButton &&
+          import.meta.env.VITE_DEMO_LOGIN === "true" &&
+          import.meta.env.VITE_DEMO_EMAIL &&
+          import.meta.env.VITE_DEMO_PASSWORD && (
+            <Suspense fallback={null}>
+              <DemoLoginButton />
+            </Suspense>
+          )}
       </form>
     </AuthLayout>
   );

@@ -10,7 +10,7 @@ export const inspectionsRouter = router({
     .output(inspectionsStartOutput)
     .mutation(({ ctx, input }) =>
       startInspection(
-        { db: ctx.db, ai: ctx.ai, storage: ctx.storage, logger: ctx.logger, jobs: ctx.jobs },
+        { db: ctx.db, ai: ctx.ai, storage: ctx.storage, logger: ctx.logger },
         { companyId: requireCompanyId(ctx.profile), assetId: input.assetId },
       ),
     ),

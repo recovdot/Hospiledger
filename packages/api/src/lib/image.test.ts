@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import sharp from "sharp";
 
 import { inspectImageHeader, validatePhoto } from "./image";
 
@@ -34,6 +35,21 @@ function webpBytes(width: number, height: number): Uint8Array {
   ]);
 }
 
+async function texturedPng(width = 800, height = 600): Promise<Uint8Array> {
+  const pixels = new Uint8Array(width * height * 3);
+  for (let index = 0; index < pixels.length; index += 3) {
+    const value = ((index / 3) * 37) % 256;
+    pixels[index] = value;
+    pixels[index + 1] = 255 - value;
+    pixels[index + 2] = (value * 13) % 256;
+  }
+  return new Uint8Array(await sharp(pixels, { raw: { width, height, channels: 3 } }).png().toBuffer());
+}
+
+async function blurredPng(): Promise<Uint8Array> {
+  return new Uint8Array(await sharp(await texturedPng()).blur(24).png().toBuffer());
+}
+
 describe("inspectImageHeader", () => {
   test("reads dimensions from PNG, JPEG, and WebP headers", () => {
     expect(inspectImageHeader(pngBytes(1024, 768))).toEqual({ format: "image/png", width: 1024, height: 768 });
@@ -47,24 +63,32 @@ describe("inspectImageHeader", () => {
 });
 
 describe("validatePhoto", () => {
-  test("accepts a photo that matches the declared type and the minimum resolution", () => {
-    expect(validatePhoto(pngBytes(800, 600), "image/png")).toEqual({ qualityOk: true, qualityReason: null });
+  test("accepts a sharp decoded photo that matches the declared type and minimum resolution", async () => {
+    await expect(validatePhoto(await texturedPng(), "image/png")).resolves.toEqual({ qualityOk: true, qualityReason: null });
   });
 
-  test("rejects a mismatched content type with a reason the seller can act on", () => {
-    const result = validatePhoto(pngBytes(800, 600), "image/jpeg");
-    expect(result.qualityOk).toBe(false);
-    expect(result.qualityReason).toContain("image/png");
+  test("rejects a mismatched content type with a reason the seller can act on", async () => {
+    const validation = await validatePhoto(await texturedPng(), "image/jpeg");
+    expect(validation.qualityOk).toBe(false);
+    expect(validation.qualityReason).toContain("image/png");
   });
 
-  test("rejects a photo below the minimum resolution", () => {
-    const result = validatePhoto(jpegBytes(320, 240), "image/jpeg");
-    expect(result.qualityOk).toBe(false);
-    expect(result.qualityReason).toContain("640×480");
+  test("rejects a photo below the minimum resolution", async () => {
+    const validation = await validatePhoto(jpegBytes(320, 240), "image/jpeg");
+    expect(validation.qualityOk).toBe(false);
+    expect(validation.qualityReason).toContain("640×480");
   });
 
-  test("rejects an empty file and unrecognized bytes", () => {
-    expect(validatePhoto(new Uint8Array(), "image/png").qualityOk).toBe(false);
-    expect(validatePhoto(new Uint8Array([1, 2, 3]), "image/png").qualityOk).toBe(false);
+  test("rejects an empty file and unrecognized bytes", async () => {
+    expect((await validatePhoto(new Uint8Array(), "image/png")).qualityOk).toBe(false);
+    expect((await validatePhoto(new Uint8Array([1, 2, 3]), "image/png")).qualityOk).toBe(false);
+  });
+
+  test("rejects a decoded image without enough visual detail", async () => {
+    const validation = await validatePhoto(await blurredPng(), "image/png");
+    expect(validation).toEqual({
+      qualityOk: false,
+      qualityReason: "Foto terlalu buram atau tidak menampilkan detail. Unggah foto yang lebih jelas.",
+    });
   });
 });

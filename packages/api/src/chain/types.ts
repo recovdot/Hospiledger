@@ -9,6 +9,14 @@ export type AnchorResult = {
   chainCluster: string;
 };
 
+/** Signed candidate metadata persisted before any network broadcast; never stores memo or wire bytes. */
+export type PreparedMemo = {
+  txSignature: string;
+  blockhash: string;
+  lastValidBlockHeight: number;
+  chainCluster: string;
+};
+
 /** Outcome of reading a recorded transaction back from the cluster. */
 export type MemoRead =
   | { kind: "confirmed"; slot: number; memoText: string | null; errored: boolean }
@@ -21,7 +29,8 @@ export type ChainClient = {
   readonly chainCluster: string;
   getSignerAddress(): string;
   getSignerLamports(): Promise<number>;
-  anchorMemo(memo: string): Promise<AnchorResult>;
+  prepareMemo(memo: string): Promise<PreparedMemo>;
+  broadcastPreparedMemo(memo: string, prepared: PreparedMemo): Promise<AnchorResult>;
   readMemo(txSignature: string): Promise<MemoRead>;
 };
 
@@ -62,12 +71,8 @@ export type ChainTransaction = Readonly<{
 }>;
 
 /**
- * The exact slice of the JSON RPC API this module calls.
- *
- * Only the five methods the anchor flow uses are declared, so a test can hand-roll the whole
- * dependency. Every method returns the SDK's pending request shape, whose `send()` performs the
- * call. The real `createSolanaRpc(...)` client is passed in unchanged, proving the slice stays
- * assignable; when it is not, this interface is trimmed instead of the client being cast.
+ * RPC slice used to prepare, broadcast, reconcile and read anchors. Methods return SDK pending
+ * requests; the real `createSolanaRpc(...)` remains assignable without an adapter.
  */
 export type ChainRpc = {
   getLatestBlockhash(config?: Readonly<{ commitment?: Commitment }>): {
@@ -78,6 +83,7 @@ export type ChainRpc = {
       }>
     >;
   };
+  getBlockHeight(config?: Readonly<{ commitment?: Commitment }>): { send: () => Promise<bigint> };
   sendTransaction(
     transaction: string,
     config?: Readonly<{

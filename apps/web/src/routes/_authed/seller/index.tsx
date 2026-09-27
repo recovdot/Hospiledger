@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authed/seller/")({
 });
 
 function SellerAssetList() {
-  const { data, isLoading } = useQuery(trpc.assets.list.queryOptions({ limit: 50, offset: 0 }));
+  const { data, isLoading, isError, error } = useQuery(trpc.assets.list.queryOptions({ limit: 50, offset: 0 }));
 
   return (
     <DashboardShell
@@ -25,15 +25,17 @@ function SellerAssetList() {
       action={
         <Link
           to="/seller/new"
-          className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors duration-300 hover:bg-brand-strong"
+          className="rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors duration-300 hover:bg-brand-active"
         >
           Buat aset baru
         </Link>
       }
     >
-      <div className="rounded-[28px] bg-white p-2">
+      <div className="rounded-[28px] bg-card p-2">
         {isLoading ? (
           <p className="p-6 text-sm text-ink-muted">Memuat...</p>
+        ) : isError ? (
+          <p className="p-6 text-sm text-red-700">{error instanceof Error ? error.message : "Daftar aset tidak dapat dimuat. Coba lagi."}</p>
         ) : !data || data.items.length === 0 ? (
           <Empty>
             <EmptyHeader>

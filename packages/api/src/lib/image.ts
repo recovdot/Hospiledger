@@ -1,4 +1,5 @@
-import { MIN_PHOTO_HEIGHT, MIN_PHOTO_WIDTH } from "@hospiledger/shared";
+import { MAX_PHOTO_BYTES, MIN_PHOTO_HEIGHT, MIN_PHOTO_WIDTH } from "@hospiledger/shared";
+import sharp from "sharp";
 
 import type { PhotoContentType } from "@hospiledger/shared";
 
@@ -112,15 +113,18 @@ export function inspectImageHeader(bytes: Uint8Array): {
 }
 
 /**
- * Validates an uploaded photo for format and resolution. Clarity is judged by the seller and by the inspection stage.
+ * Validates an uploaded photo for format, resolution, and minimum visual detail.
  *
  * @param bytes raw uploaded bytes
  * @param declaredContentType content type the upload URL was issued for
  * @returns whether the photo is acceptable and, when it is not, the reason the seller must act on
  */
-export function validatePhoto(bytes: Uint8Array, declaredContentType: PhotoContentType): PhotoValidation {
+export async function validatePhoto(bytes: Uint8Array, declaredContentType: PhotoContentType): Promise<PhotoValidation> {
   if (bytes.length === 0) {
     return { qualityOk: false, qualityReason: "Berkas foto kosong. Unggah ulang foto asli." };
+  }
+  if (bytes.length > MAX_PHOTO_BYTES) {
+    return { qualityOk: false, qualityReason: "Ukuran berkas foto melebihi batas. Unggah foto yang lebih kecil." };
   }
   const header = inspectImageHeader(bytes);
   if (!header.format) {
@@ -141,5 +145,37 @@ export function validatePhoto(bytes: Uint8Array, declaredContentType: PhotoConte
       qualityReason: `Resolusi foto minimal ${MIN_PHOTO_WIDTH}×${MIN_PHOTO_HEIGHT}. Foto ini ${header.width}×${header.height}.`,
     };
   }
+
+  try {
+    const decoded = await sharp(bytes, { limitInputPixels: 24_000_000 })
+      .rotate()
+      .resize({ width: 128, height: 128, fit: "inside", withoutEnlargement: true })
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const { data: grayscale, info } = decoded;
+    let laplacianTotal = 0;
+    let pixelCount = 0;
+    for (let y = 1; y < info.height - 1; y += 1) {
+      for (let x = 1; x < info.width - 1; x += 1) {
+        const pixel = grayscale[y * info.width + x] ?? 0;
+        const laplacian = Math.abs(
+          4 * pixel
+          - (grayscale[(y - 1) * info.width + x] ?? 0)
+          - (grayscale[(y + 1) * info.width + x] ?? 0)
+          - (grayscale[y * info.width + x - 1] ?? 0)
+          - (grayscale[y * info.width + x + 1] ?? 0),
+        );
+        laplacianTotal += laplacian;
+        pixelCount += 1;
+      }
+    }
+    if (pixelCount === 0 || laplacianTotal / pixelCount < 2) {
+      return { qualityOk: false, qualityReason: "Foto terlalu buram atau tidak menampilkan detail. Unggah foto yang lebih jelas." };
+    }
+  } catch {
+    return { qualityOk: false, qualityReason: "Berkas foto tidak dapat dibaca. Unggah JPEG, PNG, atau WebP yang valid." };
+  }
+
   return { qualityOk: true, qualityReason: null };
 }

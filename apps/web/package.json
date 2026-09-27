@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "NODE_ENV=production vite build",
     "serve": "vite preview",
     "start": "vite",
-    "check-types": "vite build && tsc --noEmit",
+    "check-types": "NODE_ENV=production vite build && tsc --noEmit",
     "env:generate": "varlock codegen"
   },
   "dependencies": {

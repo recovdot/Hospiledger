@@ -45,6 +45,48 @@ bun run dev
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 The API is running at [http://localhost:3000](http://localhost:3000).
 
+## Durable backend worker
+
+Background work (AI inspection, Solana anchoring, photo cleanup) runs from the `backend_jobs`
+table, one `(kind, target_id)` descriptor with SKIP LOCKED leasing. A job is claimed with a lease
+(60s, heartbeated every 15s, polled every 1s); the worker stops accepting claims and drains
+in-flight work on graceful shutdown. Late or exhausted claims fail closed on the domain row, never
+guess: an inspection moves to `ai_failed`, an anchor record stays `failed` for explicit retry, and
+ambiguous legacy pending anchors require operator reconciliation (the server refuses to reuse
+them without a modern descriptor).
+
+`public_rpc_budgets` is shared by both public RPC-bearing endpoints (`publicPassports.getByCode`
+and `verify`); the budget key is the server-derived request IP, falling back to one conservative
+shared budget for unknown clients.
+
+## Database workflow
+
+- `bun run db:generate` regenerates a forward-only migration from `packages/db/src/schema`; never
+  edit an applied migration; `db:push` is for local development only, never a remote project.
+- The `asset_photos` uniqueness migration includes an upfront duplicate-report preflight; it
+  fails migration startup listing conflicting `(asset_id, type, storage_path)` photo IDs rather
+  than deleting evidence. Resolve those rows explicitly before applying.
+- Existing photos that predate the immutable path convention must be re-uploaded under a new
+  non-overwrite path: run `bun apps/server/src/photo-audit.ts audit` to list integrity status and
+  `bun apps/server/src/photo-audit.ts repair` to copy verified bytes. Mismatched or missing
+  evidence is reported and never silently re-hashed.
+- Use a separate test database (`TEST_DATABASE_URL`, pathname marked `test`); tests skip unless
+  isolated, never against dev/production data.
+
+## Verification
+
+Public passport verification recomputes the canonical hash, reads the on-chain memo and checks
+the accepted evidence bytes. It can legitimately return `mismatch` after a test/devnet reset or
+if photo bytes were replaced; this limitation is disclosed in UI copy, never presented as
+permanent provenance.
+
+## Inspection and seller review
+
+- Photo confirmation rejects unsupported, undersized, unreadable, oversized, and clearly blurred or detail-free images. Rejected slots remain replaceable and block inspection submission.
+- Inspections retain immutable structured recognition and condition-scoring evidence. Without a configured market-data source, new inspections intentionally omit a price estimate; historical estimates are labeled as AI estimates without market data.
+- Sellers can correct allowlisted identity, equipment, condition, and damage fields without overwriting the AI row. Corrections stay in `seller_reviews`; a separate acceptance moves the passport to `approved`.
+- Published views show the folded approved corrections, preserve AI score components as AI-generated, and identify seller-corrected fields. The registered company name is informational metadata and is not part of the chain-verified hash.
+
 ## UI Customization
 
 React web apps in this stack share shadcn/ui primitives through `packages/ui`.
@@ -105,3 +147,5 @@ hospiledger/
 - `bun run db:generate`: Generate database client/types
 - `bun run db:migrate`: Run database migrations
 - `bun run db:studio`: Open database studio UI
+- `bun run photo-audit:audit`: Inspect existing photo bytes against stored hashes (from `apps/server`)
+- `bun run photo-audit:repair`: Move verified legacy photos to non-overwrite paths (from `apps/server`)

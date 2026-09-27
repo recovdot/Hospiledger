@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@hospiledger/ui/components/empty";
 import { Field } from "@hospiledger/ui/components/field";
@@ -16,23 +16,40 @@ export const Route = createFileRoute("/_authed/buyer")({
 });
 
 function BuyerSearch() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [assetCodeInput, setAssetCodeInput] = useState("");
+  const [assetCodeError, setAssetCodeError] = useState<string | undefined>();
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query.trim()), 300);
     return () => clearTimeout(timer);
   }, [query]);
 
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, isError, error } = useQuery(
     trpc.publicPassports.list.queryOptions({ q: debounced || undefined, limit: 24, offset: 0 }),
   );
+
+  function handleAssetCodeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const assetCode = assetCodeInput.trim();
+    if (!ASSET_CODE_PATTERN.test(assetCode)) {
+      setAssetCodeError("Kode aset tidak valid. Format: HPL-2026-00001.");
+      return;
+    }
+    setAssetCodeError(undefined);
+    void navigate({ to: "/passport/$assetCode", params: { assetCode } });
+  }
 
   return (
     <DashboardShell role="buyer" title="Cari aset" description="Jelajahi passport yang sudah dipublikasikan atau buka langsung lewat kode aset.">
       <div className="flex flex-col gap-6">
-        <div className="grid gap-4 rounded-[28px] bg-white p-6 md:grid-cols-[2fr_1fr_auto] md:items-end">
+        <form
+          role="search"
+          onSubmit={handleAssetCodeSubmit}
+          className="grid gap-4 rounded-[28px] bg-card p-6 sm:grid-cols-[2fr_1fr_auto] sm:items-end md:items-end"
+        >
           <Field
             label="Cari kategori, merek, atau model"
             value={query}
@@ -41,24 +58,29 @@ function BuyerSearch() {
             inputClassName="rounded-full"
           />
           <Field
+            id="buyer-asset-code"
             label="Buka via kode aset"
             value={assetCodeInput}
-            onChange={(e) => setAssetCodeInput(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              setAssetCodeInput(e.target.value.toUpperCase());
+              if (assetCodeError) setAssetCodeError(undefined);
+            }}
             placeholder="HPL-2026-00001"
+            error={assetCodeError}
             inputClassName="rounded-full"
           />
-          <Link
-            to="/passport/$assetCode"
-            params={{ assetCode: assetCodeInput }}
-            className="h-11 rounded-full bg-brand px-6 text-center text-sm leading-[2.75rem] text-white transition-colors duration-300 hover:bg-brand-strong aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            aria-disabled={!ASSET_CODE_PATTERN.test(assetCodeInput)}
+          <button
+            type="submit"
+            className="h-11 rounded-full bg-brand px-6 text-center text-sm text-white transition-colors duration-300 hover:bg-brand-active"
           >
             Buka
-          </Link>
-        </div>
+          </button>
+        </form>
 
         {isLoading ? (
           <p className="text-sm text-ink-muted">Memuat...</p>
+        ) : isError ? (
+          <p className="text-sm text-red-700">{error instanceof Error ? error.message : "Passport tidak dapat dimuat. Coba lagi."}</p>
         ) : !data || data.items.length === 0 ? (
           <Empty>
             <EmptyHeader>
@@ -74,12 +96,12 @@ function BuyerSearch() {
                 key={item.assetCode}
                 to="/passport/$assetCode"
                 params={{ assetCode: item.assetCode }}
-                className="flex flex-col overflow-hidden rounded-[28px] bg-white transition-transform hover:-translate-y-1"
+                className="flex flex-col overflow-hidden rounded-[28px] bg-card transition-transform hover:-translate-y-1"
               >
                 {item.coverPhotoUrl ? (
                   <img src={item.coverPhotoUrl} alt={item.model} className="h-40 w-full object-cover" />
                 ) : (
-                  <div className="h-40 w-full bg-canvas" />
+                  <div className="h-40 w-full bg-muted" />
                 )}
                 <div className="flex flex-col gap-1 p-5">
                   <p className="font-mono text-xs text-ink-muted">{item.assetCode}</p>

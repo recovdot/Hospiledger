@@ -56,7 +56,7 @@ function NewAsset() {
 
   return (
     <DashboardShell role="seller" title="Buat aset baru" description="Isi data peralatan sebelum mengunggah foto bukti.">
-      <form onSubmit={handleSubmit} className="max-w-2xl rounded-[28px] bg-white p-6 md:p-10">
+      <form onSubmit={handleSubmit} className="max-w-2xl rounded-[28px] bg-card p-6 md:p-10">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Kategori" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kulkas komersial" error={errors.category} />
           <Field label="Merek" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Contoh: Gea" error={errors.brand} />
@@ -73,11 +73,11 @@ function NewAsset() {
           placeholder="Ceritakan riwayat pemakaian aset ini"
           className="mt-5"
         />
-        {banner && <p className="mt-4 text-sm text-red-500">{banner}</p>}
+        {banner && <p className="mt-4 text-sm text-red-700">{banner}</p>}
         <button
           type="submit"
           disabled={createAsset.isPending}
-          className="mt-6 h-11 rounded-full bg-brand px-6 text-sm font-medium text-white transition-colors duration-300 hover:bg-brand-strong disabled:opacity-70"
+          className="mt-6 h-11 rounded-full bg-brand px-6 text-sm font-medium text-white transition-colors duration-300 hover:bg-brand-active disabled:opacity-70"
         >
           {createAsset.isPending ? "Menyimpan..." : "Buat aset"}
         </button>

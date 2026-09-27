@@ -137,7 +137,7 @@ export function RegisterForm() {
         footer={
           <>
             Sudah punya akun?{" "}
-            <Link to="/login" className="font-medium text-black underline underline-offset-4">
+            <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
               Masuk
             </Link>
           </>
@@ -150,7 +150,7 @@ export function RegisterForm() {
           </p>
           <Link
             to="/login"
-            className="h-11 w-full rounded-full bg-brand text-center text-base leading-[2.75rem] text-white transition-colors duration-300 hover:bg-brand-strong"
+            className="h-11 w-full rounded-full bg-brand text-center text-base leading-[2.75rem] text-white transition-colors duration-300 hover:bg-brand-active"
           >
             Masuk
           </Link>
@@ -164,7 +164,7 @@ export function RegisterForm() {
       footer={
         <>
           Sudah punya akun?{" "}
-          <Link to="/login" className="font-medium text-black underline underline-offset-4">
+          <Link to="/login" className="font-medium text-foreground underline underline-offset-4">
             Masuk
           </Link>
         </>
@@ -177,6 +177,7 @@ export function RegisterForm() {
             <p className="mt-1 text-sm text-ink-muted">Langkah 1 dari 2 — Akun</p>
           </div>
           <AuthField
+            id="register-email"
             label="Email"
             type="email"
             value={email}
@@ -186,6 +187,7 @@ export function RegisterForm() {
             autoComplete="email"
           />
           <AuthField
+            id="register-password"
             label="Kata sandi"
             type="password"
             value={password}
@@ -195,6 +197,7 @@ export function RegisterForm() {
             autoComplete="new-password"
           />
           <AuthField
+            id="register-confirm"
             label="Konfirmasi kata sandi"
             type="password"
             value={passwordConfirm}
@@ -213,6 +216,7 @@ export function RegisterForm() {
             <p className="mt-1 text-sm text-ink-muted">Langkah 2 dari 2 — Profil</p>
           </div>
           <AuthField
+            id="register-name"
             label="Nama lengkap"
             type="text"
             value={name}
@@ -222,6 +226,7 @@ export function RegisterForm() {
             autoComplete="name"
           />
           <AuthField
+            id="register-company"
             label="Nama perusahaan"
             type="text"
             value={companyName}
@@ -231,6 +236,7 @@ export function RegisterForm() {
             autoComplete="organization"
           />
           <AuthField
+            id="register-phone"
             label="Nomor telepon"
             type="tel"
             value={phone}
@@ -240,7 +246,7 @@ export function RegisterForm() {
             autoComplete="tel"
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-black">Peran</label>
+            <label className="text-sm font-medium text-foreground">Peran</label>
             <div className="flex flex-wrap gap-2">
               {SELF_SELECTABLE_ROLES.map((option) => {
                 const selected = option === role;
@@ -253,7 +259,7 @@ export function RegisterForm() {
                       "rounded-full border px-4 py-2 text-sm transition-colors duration-300",
                       selected
                         ? "border-brand bg-brand/10 text-brand-strong"
-                        : "border-black/15 bg-transparent text-ink-muted hover:border-black/40",
+                        : "border-border bg-transparent text-ink-muted hover:border-foreground/40",
                     )}
                   >
                     <span className="font-medium">{ROLE_LABELS[option].title}</span>

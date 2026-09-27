@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { MotionConfig } from "motion/react";
 
 import About from "@/components/landing/about";
 import Cta from "@/components/landing/cta";
@@ -10,6 +11,7 @@ import Navbar from "@/components/landing/navbar";
 import Pricing from "@/components/landing/pricing";
 import Promo from "@/components/landing/promo";
 import Services from "@/components/landing/services";
+import { SectionSwitcher } from "@/components/landing/section-switcher";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -17,17 +19,20 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <main>
-      <Navbar />
-      <Hero />
-      <Promo />
-      <About />
-      <Services />
-      <Features />
-      <Pricing />
-      <Faq />
-      <Cta />
-      <Footer />
-    </main>
+    <MotionConfig reducedMotion="user">
+      <main className="relative">
+        <Navbar />
+        <Hero />
+        <Promo />
+        <About />
+        <Services />
+        <Features />
+        <Pricing />
+        <Faq />
+        <Cta />
+        <Footer />
+        <SectionSwitcher />
+      </main>
+    </MotionConfig>
   );
 }

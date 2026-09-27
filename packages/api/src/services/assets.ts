@@ -1,7 +1,7 @@
-import { assets, aiInspections, passports, type Database } from "@hospiledger/db";
+import { assets, passports, type Database } from "@hospiledger/db";
 import type { AssetsCreateInput, AssetsCreateOutput, AssetsGetOutput, AssetsListOutput } from "@hospiledger/shared";
 import { TRPCError } from "@trpc/server";
-import { count, desc, eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 
 import type { DbHandle } from "../db";
 import type { AssetPhotoStorage } from "../storage/asset-photos";
@@ -81,7 +81,7 @@ export async function listAssets(
 }
 
 /**
- * Loads one owned asset with signed photo URLs, its passport and chain status, and the latest inspection.
+ * Loads one owned asset with signed photo URLs, its passport and chain status, and its linked inspection.
  *
  * @param db database or transaction handle
  * @param storage asset photo storage
@@ -97,12 +97,9 @@ export async function loadAssetDetail(
   const asset = await loadOwnedAsset(db, input);
   const photos = await signPhotoUrls(storage, await loadAssetPhotos(db, input.assetId));
   const passport = await db.query.passports.findFirst({ where: { assetId: input.assetId } });
-  const [inspection] = await db
-    .select()
-    .from(aiInspections)
-    .where(eq(aiInspections.assetId, input.assetId))
-    .orderBy(desc(aiInspections.createdAt))
-    .limit(1);
+  const inspection = passport?.inspectionId
+    ? await db.query.aiInspections.findFirst({ where: { id: passport.inspectionId, assetId: input.assetId } })
+    : null;
 
   const chainRecord = passport ? await loadLatestChainRecord(db, passport.id) : null;
 

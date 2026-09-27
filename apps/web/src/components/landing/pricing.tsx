@@ -31,7 +31,7 @@ const tiers = [
 
 export default function Pricing() {
   return (
-    <SectionShell id="harga" tone="dark">
+    <SectionShell id="harga" tone="light">
       <Reveal>
         <h2 className={`${headingXl} max-w-4xl`}>
           Harga yang jujur <GradientWord>dari awal.</GradientWord>
@@ -45,7 +45,7 @@ export default function Pricing() {
             className={
               popular
                 ? "relative rounded-[28px] border-2 border-brand bg-white p-10 text-black"
-                : "relative rounded-[28px] bg-white p-10 text-black"
+                : "relative rounded-[28px] border border-black/8 bg-white p-10 text-black"
             }
           >
             {popular && (
@@ -56,7 +56,7 @@ export default function Pricing() {
             <h3 className="text-xl text-ink-muted">{name}</h3>
             <p className="mt-6 tracking-tight">
               <span className="text-4xl md:text-5xl">{price}</span>
-              {period && <span className="text-ink-muted-dark"> {period}</span>}
+              {period && <span className="text-ink-muted"> {period}</span>}
             </p>
             <ul className="mt-8 space-y-3 text-ink-muted md:text-lg">
               {features.map((feature) => (

@@ -6,7 +6,6 @@ import type { ChainClient } from "./chain/types";
 import type { ApiConfig } from "./config";
 import type { JobRunner } from "./jobs/runner";
 import type { Logger } from "./logger";
-import type { RateLimiter } from "./lib/rate-limit";
 import type { SupabaseAdmin } from "./supabase";
 import type { AssetPhotoStorage } from "./storage/asset-photos";
 
@@ -31,7 +30,6 @@ export type ApiDeps = {
   ai: InspectionAi;
   chain: ChainClient;
   jobs: JobRunner;
-  verifyRateLimiter: RateLimiter;
   logger: Logger;
   config: ApiConfig;
 };

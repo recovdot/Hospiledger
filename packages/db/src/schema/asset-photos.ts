@@ -1,4 +1,5 @@
-import { boolean, char, index, text, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, char, index, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import { assets } from "./assets";
 import { photoType } from "./enums";
@@ -18,5 +19,11 @@ export const assetPhotos = pgTable.withRLS(
     qualityReason: text(),
     ...timestamps,
   },
-  (table) => [index("asset_photos_asset_id_idx").on(table.assetId)],
+  (table) => [
+    index("asset_photos_asset_id_idx").on(table.assetId),
+    uniqueIndex("asset_photos_storage_path_unique").on(table.storagePath),
+    uniqueIndex("asset_photos_required_slot_unique")
+      .on(table.assetId, table.type)
+      .where(sql`${table.type} IN ('front', 'side', 'back', 'nameplate')`),
+  ],
 );

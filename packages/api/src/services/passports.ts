@@ -46,12 +46,9 @@ export async function loadPassportDetail(
 ): Promise<PassportsGetOutput> {
   const passport = await loadOwnedPassport(db, input);
   const photos = await signPhotoUrls(storage, await loadAssetPhotos(db, passport.assetId));
-  const [inspection] = await db
-    .select()
-    .from(aiInspections)
-    .where(eq(aiInspections.assetId, passport.assetId))
-    .orderBy(desc(aiInspections.createdAt))
-    .limit(1);
+  const inspection = passport.inspectionId
+    ? (await db.select().from(aiInspections).where(eq(aiInspections.id, passport.inspectionId)).limit(1))[0]
+    : null;
   const reviews = await db
     .select()
     .from(sellerReviews)
@@ -60,7 +57,7 @@ export async function loadPassportDetail(
   const record = await loadLatestChainRecord(db, passport.id);
   const verification =
     record?.chainStatus === "confirmed"
-      ? await verifyPassportAnchor(db, chain, passport, record.version, new Date())
+      ? await verifyPassportAnchor(db, storage, chain, passport, record, new Date())
       : null;
 
   return {

@@ -27,8 +27,8 @@ export function RoleDashboard({
   } as const;
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas text-black">
-      <header className="border-b border-black/10 bg-canvas/90 px-5 backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-muted text-foreground">
+      <header className="border-b border-black/10 bg-muted/90 px-5 backdrop-blur">
         <div className="mx-auto flex h-[72px] max-w-5xl items-center justify-between">
           <Link to="/" className="text-lg font-bold tracking-tight">
             HospiLedger
@@ -39,7 +39,7 @@ export function RoleDashboard({
               type="button"
               onClick={signOut}
               disabled={signingOut}
-              className="max-sm:min-h-11 rounded-full border border-black/15 bg-transparent px-4 py-2 transition-colors duration-300 hover:border-black/40 disabled:opacity-70"
+              className="max-sm:min-h-11 rounded-full border border-border bg-transparent px-4 py-2 transition-colors duration-300 hover:border-foreground/40 disabled:opacity-70"
             >
               Keluar
             </button>
@@ -48,7 +48,7 @@ export function RoleDashboard({
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-5 py-10">
         <h1 className="text-3xl font-semibold tracking-[-0.02em]">{headings[role]}</h1>
-        <div className="mt-6 max-w-md rounded-[28px] bg-white p-8">
+        <div className="mt-6 max-w-md rounded-[28px] bg-card p-8">
           <dl className="flex flex-col gap-4 text-sm">
             <div className="flex items-center justify-between gap-4">
               <dt className="text-ink-muted">Nama</dt>

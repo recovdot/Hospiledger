@@ -24,6 +24,15 @@ export function dashboardBeforeLoad(role: Exclude<SelfSelectableRole, "admin">) 
   };
 }
 
+export async function profileBeforeLoad({ context }: { context: RouterAppContext }) {
+  try {
+    await context.queryClient.ensureQueryData(trpc.profile.me.queryOptions());
+  } catch (error) {
+    if (isProfileMissing(error)) throw redirect({ to: "/register" });
+    throw error;
+  }
+}
+
 export function DashboardFor(role: Exclude<SelfSelectableRole, "admin">) {
   return function Dashboard() {
     const [email, setEmail] = useState("");

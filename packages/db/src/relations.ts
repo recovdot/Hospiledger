@@ -18,9 +18,17 @@ export const relations = defineRelations(schema, (r) => ({
     photos: r.many.assetPhotos(),
     inspections: r.many.aiInspections(),
     passports: r.many.passports(),
+    photoUploadReservations: r.many.photoUploadReservations(),
   },
   assetPhotos: {
     asset: r.one.assets({ from: r.assetPhotos.assetId, to: r.assets.id, optional: false }),
+  },
+  photoUploadReservations: {
+    asset: r.one.assets({
+      from: r.photoUploadReservations.assetId,
+      to: r.assets.id,
+      optional: false,
+    }),
   },
   aiInspections: {
     asset: r.one.assets({ from: r.aiInspections.assetId, to: r.assets.id, optional: false }),

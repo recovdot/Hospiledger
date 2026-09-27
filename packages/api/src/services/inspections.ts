@@ -1,16 +1,16 @@
 import { aiInspections, passports, type Database } from "@hospiledger/db";
 import type { InspectionsGetOutput, InspectionsStartOutput } from "@hospiledger/shared";
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { InspectionAi } from "../ai/types";
 import type { DbHandle } from "../db";
-import type { JobRunner } from "../jobs/runner";
+import { enqueueBackendJob, type JobLease } from "../jobs/runner";
 import type { Logger } from "../logger";
 import type { AssetPhotoStorage } from "../storage/asset-photos";
 import { loadOwnedAsset } from "./ownership";
 import { transitionPassportStatus } from "./passport-status";
-import { findMissingRequiredPhotos, loadAssetPhotos } from "./photos";
+import { findMissingRequiredPhotos, loadAssetPhotos, lockPhotoPassport } from "./photos";
 
 export type InspectionJobDeps = {
   db: Database;
@@ -19,23 +19,16 @@ export type InspectionJobDeps = {
   logger: Logger;
 };
 
-export type InspectionDeps = InspectionJobDeps & { jobs: JobRunner };
+export type InspectionDeps = InspectionJobDeps;
 
 const STARTABLE_PASSPORT_STATUSES: readonly string[] = ["draft", "ai_failed"];
 
-async function loadPassportForAsset(db: DbHandle, assetId: string) {
-  const passport = await db.query.passports.findFirst({ where: { assetId } });
-  if (!passport) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Passport tidak ditemukan." });
-  }
-  return passport;
-}
 
 /**
- * Submits an asset for AI inspection: checks the evidence set, opens an inspection row, advances the passport
- * to `ai_processing`, and schedules the inspection job. Also used to retry a passport that is in `ai_failed`.
+ * Submits an asset for AI inspection under the same passport lock used by photo confirmation.
+ * The linked processing row, state transitions, and durable job are committed together.
  *
- * @param deps database, AI client, photo storage, logger, and the job runner
+ * @param deps database, AI client, photo storage, and logger
  * @param input owning company and asset id
  * @returns the new inspection id and its initial status
  * @throws {TRPCError} `NOT_FOUND` for a foreign asset, `BAD_REQUEST` when required photos are missing or the status forbids starting
@@ -44,50 +37,43 @@ export async function startInspection(
   deps: InspectionDeps,
   input: { companyId: string; assetId: string },
 ): Promise<InspectionsStartOutput> {
-  await loadOwnedAsset(deps.db, input);
-  const passport = await loadPassportForAsset(deps.db, input.assetId);
-  if (!STARTABLE_PASSPORT_STATUSES.includes(passport.status)) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `Inspeksi tidak bisa dimulai dari status ${passport.status}.`,
-    });
-  }
-  const photos = await loadAssetPhotos(deps.db, input.assetId);
-  const missing = findMissingRequiredPhotos(photos);
-  if (missing.length > 0) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `Foto wajib belum lengkap. ${missing.map((entry) => entry.reason).join(" ")}`,
-    });
-  }
+  return deps.db.transaction(async (tx) => {
+    const passport = await lockPhotoPassport(tx, input.assetId);
+    await loadOwnedAsset(tx, input);
+    if (!STARTABLE_PASSPORT_STATUSES.includes(passport.status)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Inspeksi tidak bisa dimulai dari status ${passport.status}.`,
+      });
+    }
+    const missing = findMissingRequiredPhotos(await loadAssetPhotos(tx, input.assetId));
+    if (missing.length > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Foto wajib belum lengkap. ${missing.map((entry) => entry.reason).join(" ")}`,
+      });
+    }
 
-  const [inspection] = await deps.db
-    .insert(aiInspections)
-    .values({ assetId: input.assetId, status: "processing" })
-    .returning();
-  if (!inspection) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Gagal memulai inspeksi." });
-  }
-
-  if (passport.status === "draft") {
-    await transitionPassportStatus(deps.db, passport.id, "submitted");
-  }
-  await transitionPassportStatus(deps.db, passport.id, "ai_processing");
-  await deps.db
-    .update(passports)
-    .set({ inspectionId: inspection.id, updatedAt: new Date() })
-    .where(eq(passports.id, passport.id));
-
-  deps.jobs.enqueue(`inspection:${inspection.id}`, () => runInspection(deps, inspection.id));
-  return { inspectionId: inspection.id, status: "processing" };
+    const [inspection] = await tx.insert(aiInspections)
+      .values({ assetId: input.assetId, status: "processing" }).returning();
+    if (!inspection) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Gagal memulai inspeksi." });
+    }
+    if (passport.status === "draft") await transitionPassportStatus(tx, passport.id, "submitted");
+    await transitionPassportStatus(tx, passport.id, "ai_processing");
+    await tx.update(passports).set({ inspectionId: inspection.id, updatedAt: new Date() })
+      .where(eq(passports.id, passport.id));
+    await enqueueBackendJob(tx, "inspection", inspection.id);
+    return { inspectionId: inspection.id, status: "processing" };
+  });
 }
 
 /**
- * Loads the latest inspection of an owned asset with its passport status and stored photos, for status polling.
+ * Loads the passport-linked inspection of an owned asset with its status and stored photos, for status polling.
  *
  * @param db database or transaction handle
  * @param input owning company and asset id
- * @returns the latest inspection, the passport status, and every stored photo
+ * @returns the linked inspection, the passport status, and every stored photo
  * @throws {TRPCError} `NOT_FOUND` for a foreign asset
  */
 export async function loadInspection(
@@ -95,16 +81,13 @@ export async function loadInspection(
   input: { companyId: string; assetId: string },
 ): Promise<InspectionsGetOutput> {
   await loadOwnedAsset(db, input);
-  const [inspection] = await db
-    .select()
-    .from(aiInspections)
-    .where(eq(aiInspections.assetId, input.assetId))
-    .orderBy(desc(aiInspections.createdAt))
-    .limit(1);
   const passport = await db.query.passports.findFirst({
     where: { assetId: input.assetId },
-    columns: { status: true },
+    columns: { status: true, inspectionId: true },
   });
+  const inspection = passport?.inspectionId
+    ? await db.query.aiInspections.findFirst({ where: { id: passport.inspectionId, assetId: input.assetId } })
+    : null;
   return {
     inspection: inspection ?? null,
     passportStatus: passport?.status ?? null,
@@ -113,44 +96,56 @@ export async function loadInspection(
 }
 
 /**
- * Runs one AI inspection end to end and advances the passport to `pending_review`.
- * A failure marks the inspection `failed` and the passport `ai_failed`, then rethrows for the job log.
- * Safe to call twice: a run that is no longer `processing` or a passport that is no longer `ai_processing` is skipped.
+ * Runs AI only for the passport-linked processing inspection. AI I/O is outside SQL;
+ * the completed outcome and both status transitions commit together under the job lease.
  *
  * @param deps database, AI client, photo storage, and logger
  * @param inspectionId inspection to run
+ * @param lease current worker lease fencing domain writes
  */
-export async function runInspection(deps: InspectionJobDeps, inspectionId: string): Promise<void> {
+export async function runInspection(deps: InspectionJobDeps, inspectionId: string, lease: JobLease): Promise<void> {
   const inspection = await deps.db.query.aiInspections.findFirst({ where: { id: inspectionId } });
   if (!inspection || inspection.status !== "processing") return;
-  const passport = await loadPassportForAsset(deps.db, inspection.assetId);
-  if (passport.status !== "ai_processing") return;
+  const passport = await deps.db.query.passports.findFirst({ where: { assetId: inspection.assetId } });
+  if (passport?.inspectionId !== inspectionId || passport.status !== "ai_processing") return;
 
-  try {
-    const photos = (await loadAssetPhotos(deps.db, inspection.assetId)).filter((photo) => photo.qualityOk);
-    const asset = await deps.db.query.assets.findFirst({ where: { id: inspection.assetId } });
-    if (!asset) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Aset tidak ditemukan." });
-    }
-    const outcome = await deps.ai.inspect({
-      asset: {
-        category: asset.category,
-        brand: asset.brand,
-        model: asset.model,
-        serialNumber: asset.serialNumber,
-        year: asset.year,
-        capacity: asset.capacity,
-        location: asset.location,
-        previousUsage: asset.previousUsage,
-      },
-      photos: await Promise.all(
-        photos.map(async (photo) => ({ type: photo.type, url: await deps.storage.createReadUrl(photo.storagePath) })),
-      ),
-    });
-    await deps.db
-      .update(aiInspections)
+  const photos = (await loadAssetPhotos(deps.db, inspection.assetId)).filter((photo) => photo.qualityOk);
+  const asset = await deps.db.query.assets.findFirst({ where: { id: inspection.assetId } });
+  if (!asset) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Aset tidak ditemukan." });
+  }
+  const outcome = await deps.ai.inspect({
+    asset: {
+      category: asset.category,
+      brand: asset.brand,
+      model: asset.model,
+      serialNumber: asset.serialNumber,
+      year: asset.year,
+      capacity: asset.capacity,
+      location: asset.location,
+      previousUsage: asset.previousUsage,
+    },
+    photos: await Promise.all(
+      photos.map(async (photo) => ({ type: photo.type, url: await deps.storage.createReadUrl(photo.storagePath) })),
+    ),
+  }, {
+    onProgress: async (progress) => {
+      await deps.db.update(aiInspections)
+        .set({ progress, updatedAt: new Date() })
+        .where(and(eq(aiInspections.id, inspectionId), eq(aiInspections.status, "processing")));
+    },
+  });
+
+  const committed = await deps.db.transaction(async (tx) => {
+    await lease.assertCurrent(tx);
+    const locked = await lockPhotoPassport(tx, inspection.assetId);
+    if (locked.inspectionId !== inspectionId || locked.status !== "ai_processing") return false;
+    const current = await tx.query.aiInspections.findFirst({ where: { id: inspectionId } });
+    if (!current || current.status !== "processing" || current.assetId !== inspection.assetId) return false;
+    await tx.update(aiInspections)
       .set({
         status: "complete",
+        progress: null,
         detectedBrand: outcome.detectedBrand,
         detectedModel: outcome.detectedModel,
         confidence: outcome.confidence,
@@ -159,26 +154,39 @@ export async function runInspection(deps: InspectionJobDeps, inspectionId: strin
         damageSeverity: outcome.damageSeverity,
         conditionScore: outcome.conditionScore,
         grade: outcome.grade,
+        scoreComponents: outcome.scoreComponents,
+        rawOutput: outcome.rawOutput,
         valueEstimate: outcome.valueEstimate,
         valueMin: outcome.valueMin,
         valueMax: outcome.valueMax,
         updatedAt: new Date(),
       })
       .where(eq(aiInspections.id, inspectionId));
-  } catch (error) {
-    await deps.db.update(aiInspections).set({ status: "failed", updatedAt: new Date() }).where(eq(aiInspections.id, inspectionId));
-    if (passport.status === "ai_processing") {
-      await transitionPassportStatus(deps.db, passport.id, "ai_failed");
-    }
-    deps.logger.error("Inspeksi AI gagal.", {
-      inspectionId,
-      assetId: inspection.assetId,
-      reason: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
+    await transitionPassportStatus(tx, locked.id, "ai_complete");
+    await transitionPassportStatus(tx, locked.id, "pending_review");
+    return true;
+  });
+  if (committed) deps.logger.info("Inspeksi AI selesai.", { inspectionId, assetId: inspection.assetId });
+}
 
-  await transitionPassportStatus(deps.db, passport.id, "ai_complete");
-  await transitionPassportStatus(deps.db, passport.id, "pending_review");
-  deps.logger.info("Inspeksi AI selesai.", { inspectionId, assetId: inspection.assetId });
+const FAILURE_MESSAGES: Record<string, string> = {
+  inspection_validation: "Hasil inspeksi AI tidak dapat diproses. Silakan ulangi inspeksi atau hubungi dukungan.",
+  lease_expired: "Inspeksi AI terhenti sebelum selesai. Silakan ulangi inspeksi.",
+};
+
+/** Called by the worker on terminal exhaustion inside its lease-guarded transaction. */
+export async function markInspectionFailed(tx: DbHandle, inspectionId: string, category: string): Promise<void> {
+  const inspection = await tx.query.aiInspections.findFirst({ where: { id: inspectionId } });
+  if (!inspection || inspection.status !== "processing") return;
+  const passport = await lockPhotoPassport(tx, inspection.assetId);
+  if (passport.inspectionId !== inspectionId || passport.status !== "ai_processing") return;
+  await tx.update(aiInspections)
+    .set({
+      status: "failed",
+      failureReason: FAILURE_MESSAGES[category] ??
+        "Layanan inspeksi AI sedang tidak tersedia. Silakan ulangi inspeksi.",
+      updatedAt: new Date(),
+    })
+    .where(eq(aiInspections.id, inspectionId));
+  await transitionPassportStatus(tx, passport.id, "ai_failed");
 }

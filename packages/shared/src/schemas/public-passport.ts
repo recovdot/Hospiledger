@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { assetCodeSchema } from "../asset-code";
 import { DAMAGE_SEVERITIES, PHOTO_TYPES } from "../enums";
-import { damageFindingSchema } from "./inspection";
+import { conditionScoreSchema, damageFindingSchema } from "./inspection";
 import { anchorVerificationSchema, chainAnchorSchema } from "./passport";
 import { moneySchema, timestampSchema } from "./primitives";
 
@@ -20,6 +20,7 @@ export const publicPassportSchema = z.object({
   year: z.int().nullable(),
   capacity: z.string().nullable(),
   location: z.string().nullable(),
+  previousUsage: z.string().nullable(),
   conditionScore: z.int().nullable(),
   grade: z.string().nullable(),
   damageSeverity: z.enum(DAMAGE_SEVERITIES).nullable(),
@@ -27,8 +28,12 @@ export const publicPassportSchema = z.object({
   valueEstimate: moneySchema.nullable(),
   valueMin: moneySchema.nullable(),
   valueMax: moneySchema.nullable(),
+  scoreComponents: conditionScoreSchema.nullable(),
   photos: z.array(publicPassportPhotoSchema),
   publishedAt: timestampSchema,
+  sellerEdits: z.record(z.string(), z.unknown()).nullable(),
+  sellerNotes: z.string().nullable(),
+  sellerCompanyName: z.string().nullable(),
   chain: chainAnchorSchema,
   verification: anchorVerificationSchema,
 });

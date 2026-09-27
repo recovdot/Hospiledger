@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import { MAX_PHOTO_BYTES } from "./limits";
-import { passportContentSchema } from "./passport-content";
+import { canonicalJson, sha256Hex } from "./hashing";
+import { hashPassportContent, passportContentSchema } from "./passport-content";
 import { photosCreateUploadUrlInput } from "./schemas/photo";
 import { reviewsSubmitInput } from "./schemas/review";
 
@@ -13,15 +14,24 @@ describe("reviewsSubmitInput", () => {
     ).toBe(false);
   });
 
-  test("accepts an accept decision and an edit with content", () => {
+  test("accepts an accept decision and a bounded edit", () => {
     expect(reviewsSubmitInput.safeParse({ assetCode: "HPL-2026-00001", decision: "accept" }).success).toBe(true);
     expect(
       reviewsSubmitInput.safeParse({
         assetCode: "HPL-2026-00001",
         decision: "edit",
-        edits: { grade: "B+" },
+        edits: { grade: "B+", serialNumber: null, damage: [] },
       }).success,
     ).toBe(true);
+  });
+
+  test("rejects unknown correction fields and accept metadata", () => {
+    expect(reviewsSubmitInput.safeParse({
+      assetCode: "HPL-2026-00001", decision: "edit", edits: { valueEstimate: 4_000_000 },
+    }).success).toBe(false);
+    expect(reviewsSubmitInput.safeParse({
+      assetCode: "HPL-2026-00001", decision: "accept", notes: "Tidak boleh ada catatan pada persetujuan.",
+    }).success).toBe(false);
   });
 });
 
@@ -67,5 +77,23 @@ describe("passportContentSchema", () => {
       photos: [{ type: "front", fileSha256: "a".repeat(63) }],
     };
     expect(passportContentSchema.safeParse(content).success).toBe(false);
+  });
+
+  test("preserves the legacy hash when score components are absent", () => {
+    const legacyContent = {
+      assetCode: "HPL-2026-00001",
+      version: 1,
+      asset: { category: "refrigerator", brand: "Acme", model: "X1", serialNumber: null, year: 2020, capacity: null, location: null, previousUsage: null },
+      inspection: {
+        detectedBrand: null, detectedModel: null, confidence: null,
+        ocr: { serialNumber: null, voltage: null, capacity: null, manufacturingDate: null },
+        damage: [], damageSeverity: null, conditionScore: null, grade: null,
+        valueEstimate: null, valueMin: null, valueMax: null,
+      },
+      sellerEdits: null,
+      sellerNotes: null,
+      photos: [{ type: "front" as const, fileSha256: "a".repeat(64) }],
+    };
+    expect(hashPassportContent(legacyContent)).toBe(sha256Hex(canonicalJson(legacyContent)));
   });
 });

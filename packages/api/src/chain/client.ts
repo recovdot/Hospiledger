@@ -4,6 +4,7 @@ import {
   address,
   appendTransactionMessageInstruction,
   assertIsTransactionWithBlockhashLifetime,
+  blockhash,
   createKeyPairSignerFromBytes,
   createSolanaRpc,
   createTransactionMessage,
@@ -31,6 +32,7 @@ import type {
   ChainInstruction,
   ChainTransaction,
   MemoRead,
+  PreparedMemo,
 } from "./types";
 
 /**
@@ -246,55 +248,146 @@ function buildChainClient(deps: Omit<ChainClientDeps, "signer">, signer: SignerH
     return balance;
   };
 
-  const confirmAnchor = async (txSignature: string): Promise<number> => {
-    const deadline = Date.now() + confirmTimeoutMs;
-    for (;;) {
-      const { value: statuses } = await rpc
-        .getSignatureStatuses([signature(txSignature)], { searchTransactionHistory: false })
-        .send();
-      const status = statuses[0] ?? null;
-      if (status !== null) {
-        if (status.err !== null) {
-          throw new AnchorError(
-            `Transaksi anchor gagal di on-chain: ${describeError(status.err)}.`,
-            false,
-          );
-        }
-        if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") {
-          return Number(status.slot);
-        }
-      }
-      if (Date.now() >= deadline) {
-        throw new AnchorError(
-          `Konfirmasi transaksi anchor melewati batas ${confirmTimeoutMs} ms.`,
-          true,
-        );
-      }
-      await new Promise<void>((resolve) => setTimeout(resolve, confirmPollMs));
-    }
-  };
-
-  const anchorMemo = async (memo: string): Promise<AnchorResult> => {
-    await getSignerLamports();
-    const { value: latestBlockhash } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
+  const signMemo = async (memo: string, lifetime: { blockhash: string; lastValidBlockHeight: number }) => {
     const signerKeyPair = await signer.resolve();
+    if (signerKeyPair.address !== signer.address) {
+      throw new AnchorError("Signer anchor berbeda dari alamat yang dikonfigurasi.", false);
+    }
     const message = createTransactionMessage({ version: 0 });
     const withFeePayer = setTransactionMessageFeePayerSigner(signerKeyPair, message);
-    const withLifetime = setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, withFeePayer);
+    const withLifetime = setTransactionMessageLifetimeUsingBlockhash(
+      { blockhash: blockhash(lifetime.blockhash), lastValidBlockHeight: BigInt(lifetime.lastValidBlockHeight) },
+      withFeePayer,
+    );
     const withMemo = appendTransactionMessageInstruction(buildMemoInstruction(memo), withLifetime);
     const signed = await signTransactionMessageWithSigners(withMemo);
     assertIsTransactionWithBlockhashLifetime(signed);
-    const txSignature = String(getSignatureFromTransaction(signed));
-    await rpc
-      .sendTransaction(getBase64EncodedWireTransaction(signed), {
-        encoding: "base64",
-        skipPreflight: false,
-        preflightCommitment: "confirmed",
-        maxRetries: 3n,
+    return signed;
+  };
+
+  const prepareMemo = async (memo: string): Promise<PreparedMemo> => {
+    try {
+      if ((await getSignerLamports()) < 5_000) {
+        throw new AnchorError("Saldo signer tidak cukup untuk biaya transaksi anchor.", true);
+      }
+      const { value: lifetime } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
+      const preparedLifetime = {
+        blockhash: String(lifetime.blockhash),
+        lastValidBlockHeight: Number(lifetime.lastValidBlockHeight),
+      };
+      if (!Number.isSafeInteger(preparedLifetime.lastValidBlockHeight)) {
+        throw new AnchorError("Tinggi blok kedaluwarsa tidak aman untuk disimpan.", false);
+      }
+      const signed = await signMemo(memo, preparedLifetime);
+      return {
+        txSignature: String(getSignatureFromTransaction(signed)),
+        ...preparedLifetime,
+        chainCluster,
+      };
+    } catch (error) {
+      if (error instanceof AnchorError) throw error;
+      throw new AnchorError(`Persiapan transaksi anchor gagal: ${describeError(error)}.`, true);
+    }
+  };
+
+  const inspectCandidate = async (memo: string, txSignature: string): Promise<number | null> => {
+    const confirmedSignature = signature(txSignature);
+    const { value: statuses } = await rpc
+      .getSignatureStatuses([confirmedSignature], { searchTransactionHistory: true })
+      .send();
+    const status = statuses[0] ?? null;
+    if (status?.err != null) {
+      throw new AnchorError(`Transaksi anchor gagal di on-chain: ${describeError(status.err)}.`, false);
+    }
+    const transaction = await rpc
+      .getTransaction(confirmedSignature, {
+        encoding: "jsonParsed",
+        maxSupportedTransactionVersion: 0,
+        commitment: "confirmed",
       })
       .send();
-    const slot = await confirmAnchor(txSignature);
-    return { txSignature, slot, chainCluster };
+    if (transaction !== null) {
+      if (transaction.meta === null) {
+        throw new AnchorError("Metadata transaksi anchor tidak dapat dibaca.", true);
+      }
+      if (transaction.meta.err !== null) {
+        throw new AnchorError(`Transaksi anchor gagal di on-chain: ${describeError(transaction.meta.err)}.`, false);
+      }
+      if (readMemoText(transaction) !== memo) {
+        throw new AnchorError("Memo transaksi anchor berbeda dari snapshot yang disetujui.", false);
+      }
+      return Number(transaction.slot);
+    }
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+      throw new AnchorError("Transaksi anchor sudah terkonfirmasi tetapi isinya tidak dapat dibaca.", true);
+    }
+    return null;
+  };
+
+  const broadcastPreparedMemo = async (memo: string, prepared: PreparedMemo): Promise<AnchorResult> => {
+    if (prepared.chainCluster !== chainCluster) {
+      throw new AnchorError("Cluster kandidat anchor berbeda dari cluster yang dikonfigurasi.", false);
+    }
+    if (!Number.isSafeInteger(prepared.lastValidBlockHeight) || prepared.lastValidBlockHeight < 0) {
+      throw new AnchorError("Tinggi blok kandidat anchor tidak valid.", false);
+    }
+    const signed = await signMemo(memo, prepared).catch((error: unknown) => {
+      if (error instanceof AnchorError) throw error;
+      throw new AnchorError(`Kandidat anchor tidak dapat ditandatangani ulang: ${describeError(error)}.`, false);
+    });
+    if (String(getSignatureFromTransaction(signed)) !== prepared.txSignature) {
+      throw new AnchorError("Kandidat anchor tidak cocok dengan memo atau signer saat ini.", false);
+    }
+    const inspect = async (): Promise<number | null> => {
+      try {
+        return await inspectCandidate(memo, prepared.txSignature);
+      } catch (error) {
+        if (error instanceof AnchorError) throw error;
+        throw new AnchorError(`Riwayat transaksi anchor tidak dapat dibaca: ${describeError(error)}.`, true);
+      }
+    };
+    const firstSlot = await inspect();
+    if (firstSlot !== null) return { txSignature: prepared.txSignature, slot: firstSlot, chainCluster };
+
+    let height: bigint;
+    try {
+      height = await rpc.getBlockHeight({ commitment: "confirmed" }).send();
+    } catch (error) {
+      throw new AnchorError(`Tinggi blok anchor tidak dapat dibaca: ${describeError(error)}.`, true);
+    }
+    if (height > BigInt(prepared.lastValidBlockHeight)) {
+      throw new AnchorError("Kandidat anchor kedaluwarsa; riwayat RPC tidak membuktikan ketiadaannya. Perlu rekonsiliasi operator.", false);
+    }
+    try {
+      if ((await getSignerLamports()) < 5_000) {
+        throw new AnchorError("Saldo signer tidak cukup untuk biaya transaksi anchor.", true);
+      }
+      const returnedSignature = await rpc
+        .sendTransaction(getBase64EncodedWireTransaction(signed), {
+          encoding: "base64",
+          skipPreflight: false,
+          preflightCommitment: "confirmed",
+          maxRetries: 3n,
+        })
+        .send();
+      if (returnedSignature !== prepared.txSignature) {
+        throw new AnchorError("RPC mengembalikan signature berbeda dari kandidat anchor.", false);
+      }
+    } catch (error) {
+      if (error instanceof AnchorError && !error.retryable) throw error;
+      const slot = await inspect();
+      if (slot !== null) return { txSignature: prepared.txSignature, slot, chainCluster };
+      throw new AnchorError(`Pengiriman anchor ambigu: ${describeError(error)}.`, true);
+    }
+    const deadline = Date.now() + confirmTimeoutMs;
+    for (;;) {
+      const slot = await inspect();
+      if (slot !== null) return { txSignature: prepared.txSignature, slot, chainCluster };
+      if (Date.now() >= deadline) {
+        throw new AnchorError(`Konfirmasi transaksi anchor melewati batas ${confirmTimeoutMs} ms.`, true);
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, confirmPollMs));
+    }
   };
 
   const readMemo = async (txSignature: string): Promise<MemoRead> => {
@@ -303,6 +396,7 @@ function buildChainClient(deps: Omit<ChainClientDeps, "signer">, signer: SignerH
       const { value: statuses } = await rpc
         .getSignatureStatuses([confirmedSignature], { searchTransactionHistory: false })
         .send();
+      if (statuses[0]?.err != null) return { kind: "not_found" };
       const transaction = await rpc
         .getTransaction(confirmedSignature, {
           encoding: "jsonParsed",
@@ -311,24 +405,32 @@ function buildChainClient(deps: Omit<ChainClientDeps, "signer">, signer: SignerH
         })
         .send();
       if (transaction !== null) {
+        if (transaction.meta === null) return { kind: "unreachable", reason: "Metadata transaksi tidak tersedia." };
         return {
           kind: "confirmed",
           slot: Number(transaction.slot),
           memoText: readMemoText(transaction),
-          errored: transaction.meta !== null && transaction.meta.err !== null,
+          errored: transaction.meta.err !== null,
         };
       }
-      if ((statuses[0] ?? null) !== null) return { kind: "pending" };
-      const { value: historyStatuses } = await rpc
-        .getSignatureStatuses([confirmedSignature], { searchTransactionHistory: true })
-        .send();
-      return (historyStatuses[0] ?? null) === null ? { kind: "not_found" } : { kind: "pending" };
+      let status = statuses[0] ?? null;
+      if (status === null) {
+        const { value: historyStatuses } = await rpc
+          .getSignatureStatuses([confirmedSignature], { searchTransactionHistory: true })
+          .send();
+        status = historyStatuses[0] ?? null;
+      }
+      if (status === null || status.err !== null) return { kind: "not_found" };
+      if (status.confirmationStatus === "confirmed" || status.confirmationStatus === "finalized") {
+        return { kind: "unreachable", reason: "Transaksi terkonfirmasi tetapi isinya tidak tersedia." };
+      }
+      return { kind: "pending" };
     } catch (error) {
       return { kind: "unreachable", reason: describeError(error) };
     }
   };
 
-  return { chainCluster, getSignerAddress, getSignerLamports, anchorMemo, readMemo };
+  return { chainCluster, getSignerAddress, getSignerLamports, prepareMemo, broadcastPreparedMemo, readMemo };
 }
 
 /**

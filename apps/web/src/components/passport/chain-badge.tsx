@@ -30,7 +30,7 @@ export function ChainBadge({ chain, viewer }: { chain: ChainAnchor | null; viewe
 
   if (chain.chainStatus === "pending") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-canvas px-3 py-1 text-xs font-medium text-ink-muted">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium text-ink-muted">
         Menunggu pencatatan Solana
       </span>
     );

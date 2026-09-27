@@ -45,7 +45,7 @@ function AdminFailedAnchors() {
 
   return (
     <DashboardShell role="admin" title="Pencatatan Solana gagal" description="Passport yang gagal dicatat setelah percobaan berulang.">
-      <div className="rounded-[28px] bg-white p-2">
+      <div className="rounded-[28px] bg-card p-2">
         {isLoading ? (
           <p className="p-6 text-sm text-ink-muted">Memuat...</p>
         ) : !data || data.items.length === 0 ? (
@@ -74,7 +74,7 @@ function AdminFailedAnchors() {
                     type="button"
                     onClick={() => handleRetry(item.assetCode)}
                     disabled={retryAnchor.isPending}
-                    className="min-h-11 shrink-0 rounded-full border border-black/15 px-4 text-xs font-medium transition-colors duration-300 hover:border-black/40 disabled:opacity-70"
+                    className="min-h-11 min-w-11 shrink-0 rounded-full border border-border px-4 text-xs font-medium transition-colors duration-300 hover:border-foreground/40 disabled:opacity-70"
                   >
                     Coba lagi
                   </button>
@@ -104,7 +104,7 @@ function AdminFailedAnchors() {
                         type="button"
                         onClick={() => handleRetry(item.assetCode)}
                         disabled={retryAnchor.isPending}
-                        className="rounded-full border border-black/15 px-3 py-1.5 text-xs font-medium transition-colors duration-300 hover:border-black/40 disabled:opacity-70"
+                        className="min-h-11 min-w-11 rounded-full border border-border px-3 py-1.5 text-xs font-medium transition-colors duration-300 hover:border-foreground/40 disabled:opacity-70"
                       >
                         Coba lagi
                       </button>

@@ -5,7 +5,7 @@ import { cn } from "@hospiledger/ui/lib/utils";
 import { PASSPORT_STATUS_LABELS, PASSPORT_STATUS_TONE } from "@/lib/passport-status-labels";
 
 const TONE_CLASS: Record<"neutral" | "active" | "failed", string> = {
-  neutral: "bg-canvas text-ink-muted",
+  neutral: "bg-muted text-ink-muted",
   active: "bg-brand/10 text-brand-strong",
   failed: "bg-red-50 text-red-600",
 };

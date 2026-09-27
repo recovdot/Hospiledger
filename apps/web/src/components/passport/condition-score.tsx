@@ -10,9 +10,16 @@ export function ConditionScore({ score, grade }: { score: number | null; grade: 
       <div className="flex-1">
         <div className="flex items-baseline justify-between text-sm">
           <span className="text-ink-muted">Skor kondisi</span>
-          <span className="font-medium text-black">{score}/100</span>
+          <span className="font-medium text-foreground">{score}/100</span>
         </div>
-        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-canvas">
+        <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={score}
+          aria-label="Skor kondisi"
+          className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted"
+        >
           <div className="h-full rounded-full bg-brand" style={{ width: `${score}%` }} />
         </div>
       </div>

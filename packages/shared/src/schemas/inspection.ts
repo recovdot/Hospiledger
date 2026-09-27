@@ -26,6 +26,25 @@ export const conditionScoreSchema = z.object({
   grade: z.string().min(1).max(3),
 });
 
+export const inspectionRawOutputSchema = z.object({
+  recognition: z.array(z.object({
+    detectedBrand: z.string().nullable(),
+    detectedModel: z.string().nullable(),
+    confidence: confidenceSchema.nullable(),
+    ocr: nameplateOcrSchema,
+    damage: z.array(damageFindingSchema),
+    photoNotes: z.string(),
+  })),
+  assessment: z.object({
+    damageSeverity: z.enum(DAMAGE_SEVERITIES).nullable(),
+    physical: z.int().min(0).max(100),
+    visual: z.int().min(0).max(100),
+    completeness: z.int().min(0).max(100),
+    overall: z.int().min(0).max(100),
+    grade: z.string().min(1).max(3),
+  }),
+});
+
 export const valueEstimateSchema = z.object({
   estimate: moneySchema.nullable(),
   min: moneySchema.nullable(),
@@ -34,10 +53,18 @@ export const valueEstimateSchema = z.object({
   basis: z.string().nullable(),
 });
 
+export const inspectionProgressSchema = z.object({
+  stage: z.enum(["recognition", "assessment"]),
+  done: z.int().min(0),
+  total: z.int().min(1),
+});
+
 export const aiInspectionSchema = z.object({
   id: uuidSchema,
   assetId: uuidSchema,
   status: z.enum(INSPECTION_STATUSES),
+  failureReason: z.string().nullable(),
+  progress: inspectionProgressSchema.nullable(),
   detectedBrand: z.string().nullable(),
   detectedModel: z.string().nullable(),
   confidence: confidenceSchema.nullable(),
@@ -49,6 +76,7 @@ export const aiInspectionSchema = z.object({
   valueEstimate: moneySchema.nullable(),
   valueMin: moneySchema.nullable(),
   valueMax: moneySchema.nullable(),
+  scoreComponents: conditionScoreSchema.nullable(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 });
@@ -69,9 +97,11 @@ export const inspectionsGetOutput = z.object({
 });
 
 export type NameplateOcr = z.infer<typeof nameplateOcrSchema>;
+export type InspectionProgress = z.infer<typeof inspectionProgressSchema>;
 export type DamageFinding = z.infer<typeof damageFindingSchema>;
 export type ConditionScore = z.infer<typeof conditionScoreSchema>;
 export type ValueEstimate = z.infer<typeof valueEstimateSchema>;
+export type InspectionRawOutput = z.infer<typeof inspectionRawOutputSchema>;
 export type AiInspection = z.infer<typeof aiInspectionSchema>;
 export type InspectionsStartInput = z.infer<typeof inspectionsStartInput>;
 export type InspectionsStartOutput = z.infer<typeof inspectionsStartOutput>;

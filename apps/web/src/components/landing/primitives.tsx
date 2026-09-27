@@ -22,7 +22,7 @@ export function ActionButton({
       to={to}
       className={cn(
         "inline-flex rounded-full px-6 py-3 text-base transition-colors duration-300",
-        variant === "primary" && "bg-brand text-white hover:bg-brand-strong",
+        variant === "primary" && "bg-brand text-white hover:bg-brand-active",
         variant === "outline" &&
           (dark
             ? "border border-white bg-transparent text-white hover:border-white/60"

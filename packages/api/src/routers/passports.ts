@@ -28,7 +28,7 @@ export const passportsRouter = router({
     .output(passportsPublishOutput)
     .mutation(({ ctx, input }) =>
       publishPassport(
-        { db: ctx.db, chain: ctx.chain, logger: ctx.logger, jobs: ctx.jobs },
+        { db: ctx.db, chain: ctx.chain, logger: ctx.logger },
         { companyId: requireCompanyId(ctx.profile), assetCode: input.assetCode },
       ),
     ),
@@ -38,7 +38,7 @@ export const passportsRouter = router({
     .output(passportsRetryAnchorOutput)
     .mutation(({ ctx, input }) =>
       retryPassportAnchor(
-        { db: ctx.db, chain: ctx.chain, logger: ctx.logger, jobs: ctx.jobs },
+        { db: ctx.db, chain: ctx.chain, logger: ctx.logger },
         {
           assetCode: input.assetCode,
           companyId: ctx.profile.role === "admin" ? undefined : requireCompanyId(ctx.profile),

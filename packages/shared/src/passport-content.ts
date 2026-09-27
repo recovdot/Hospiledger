@@ -3,7 +3,7 @@ import { z } from "zod";
 import { assetCodeSchema } from "./asset-code";
 import { DAMAGE_KINDS, DAMAGE_SEVERITIES, PHOTO_TYPES } from "./enums";
 import { canonicalJson, sha256Hex } from "./hashing";
-import { damageFindingSchema, nameplateOcrSchema } from "./schemas/inspection";
+import { conditionScoreSchema, damageFindingSchema, nameplateOcrSchema } from "./schemas/inspection";
 import { confidenceSchema, hex64Schema, moneySchema } from "./schemas/primitives";
 
 export const passportContentSchema = z.object({
@@ -31,6 +31,7 @@ export const passportContentSchema = z.object({
     valueEstimate: moneySchema.nullable(),
     valueMin: moneySchema.nullable(),
     valueMax: moneySchema.nullable(),
+    scoreComponents: conditionScoreSchema.optional(),
   }),
   sellerEdits: z.record(z.string(), z.unknown()).nullable(),
   sellerNotes: z.string().nullable(),

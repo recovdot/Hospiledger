@@ -11,7 +11,7 @@ const KIND_LABELS: Record<DamageKind, string> = {
 
 const SEVERITY_LABELS: Record<DamageSeverity, string> = { low: "Ringan", medium: "Sedang", high: "Berat" };
 const SEVERITY_CLASS: Record<DamageSeverity, string> = {
-  low: "bg-canvas text-ink-muted",
+  low: "bg-muted text-ink-muted",
   medium: "bg-brand/10 text-brand-strong",
   high: "bg-red-50 text-red-600",
 };
@@ -31,7 +31,7 @@ export function DamageList({ damage, overallSeverity }: { damage: DamageFinding[
         {damage.map((finding, index) => (
           <li key={index} className="flex items-center justify-between gap-3 py-2 text-sm">
             <div>
-              <span className="font-medium text-black">{KIND_LABELS[finding.kind]}</span>
+              <span className="font-medium text-foreground">{KIND_LABELS[finding.kind]}</span>
               {finding.area && <span className="text-ink-muted"> · {finding.area}</span>}
               {finding.note && <p className="text-xs text-ink-muted">{finding.note}</p>}
             </div>

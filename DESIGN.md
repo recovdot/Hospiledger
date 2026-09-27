@@ -14,9 +14,10 @@ document is the original Krepling reference.
 | Kicker/eyebrow | 14–16px, uppercase, `tracking 0.14em`, `{colors.text-muted}` | `primitives.tsx` `kicker` |
 | Hero display | mobile `3rem`, md `5.25rem`, same leading/tracking | `hero.tsx` |
 | Radius | cards/panels 28px (`rounded-[28px]`), FAQ/pricing cards 28px, buttons pills (`rounded-full`) | all sections |
-| Action color | purple `{colors.primary}` `#b154f9` — the only chromatic color except headline/panel gradients | `ActionButton` primary |
+| Action color | purple `{colors.primary}` `#a53df5` (fill; white text = 4.58:1 AA) — the only chromatic color except headline/panel gradients; darker hover fill `#8f2fd6` token `--color-brand-active` (white text ≥4.5:1 both themes). Legacy `#b154f9` was 3.81:1 and was retired with the WCAG 2.2 AA binding in PRODUCT.md | `ActionButton` primary |
 | Outline border | gray, 15% black on light contexts (`border-black/15`), white on dark — deviates from Krepling's purple outline for a quieter pill look | `ActionButton` outline |
 | Canvas/stage | `#f1f1f1` light, `#171717` dark; dark panel fill `#242424` inside dark sections | `SectionShell`, features |
+| Section switcher | fixed bottom-right stack of three anchor tabs (`Layanan`/`Fitur`/`Harga`), 14px radius, scroll-spy active tab gets white fill; inactive tabs re-tint to the active section tone in `section-switcher.tsx` | `section-switcher.tsx` |
 | Muted text | `#6c6b6b` on light, `#a3a3a3` on dark | all sections |
 | Content gradient | `linear-gradient(135deg, #aee8f9, #c9c2f5 45%, #b78aff)` — pastel mock panel that hosts floating hero/CTA visuals | `primitives.tsx` `mockPanelGradient` |
 | Gradient text | `linear-gradient(92deg, #b78aff, #c58cff, #8ab6ff)` on `<em>`, 2–4 words per headline | `primitives.tsx` `GradientWord`; CTA uses a darker twin `#a53df5 → #7048e8` for contrast on the pastel panel |
