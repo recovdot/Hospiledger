@@ -29,7 +29,8 @@ async function startServer(): Promise<void> {
       });
       return res;
     })
-    .get("/", () => "OK");
+    .get("/", () => "OK")
+    .get("/health", () => ({ status: "ok" }));
 
   const sweep = () => {
     void sweepExpiredPhotoReservations(deps.db).catch(() => {
