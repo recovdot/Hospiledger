@@ -130,9 +130,12 @@ export async function runInspection(deps: InspectionJobDeps, inspectionId: strin
     ),
   }, {
     onProgress: async (progress) => {
-      await deps.db.update(aiInspections)
-        .set({ progress, updatedAt: new Date() })
-        .where(and(eq(aiInspections.id, inspectionId), eq(aiInspections.status, "processing")));
+      await deps.db.transaction(async (tx) => {
+        await lease.assertCurrent(tx);
+        await tx.update(aiInspections)
+          .set({ progress, updatedAt: new Date() })
+          .where(and(eq(aiInspections.id, inspectionId), eq(aiInspections.status, "processing")));
+      });
     },
   });
 

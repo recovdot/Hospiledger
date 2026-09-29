@@ -6,7 +6,7 @@ import { Elysia } from "elysia";
 import { createContext } from "./context";
 import { ENV } from "./env.server";
 import { deps } from "./services";
-import { sweepExpiredPhotoReservations } from "@hospiledger/api/services/photos";
+import { retryFailedPhotoDeletions, sweepExpiredPhotoReservations } from "@hospiledger/api/services/photos";
 import { cleanupPublicRpcBudgets } from "@hospiledger/api/services/public-rpc-budget";
 
 async function startServer(): Promise<void> {
@@ -35,6 +35,9 @@ async function startServer(): Promise<void> {
     void sweepExpiredPhotoReservations(deps.db).catch(() => {
       deps.logger.error("Pembersihan reservasi foto gagal.", { category: "database_unavailable" });
     });
+    void retryFailedPhotoDeletions(deps.db).catch(() => {
+      deps.logger.error("Penjadwalan ulang penghapusan foto gagal.", { category: "database_unavailable" });
+    });
     void cleanupPublicRpcBudgets(deps.db).catch(() => {
       deps.logger.error("Pembersihan anggaran verifikasi gagal.", { category: "database_unavailable" });
     });
@@ -42,9 +45,10 @@ async function startServer(): Promise<void> {
   const sweepTimer = setInterval(sweep, 15 * 60 * 1000);
   sweep();
   deps.jobs.start();
+  const port = Number(process.env.PORT ?? 3000);
   try {
-    app.listen(3000, () => {
-      deps.logger.info("Server berjalan di http://localhost:3000");
+    app.listen({ port, hostname: "0.0.0.0" }, () => {
+      deps.logger.info("Server berjalan.", { port });
     });
   } catch (error) {
     await deps.jobs.stop();

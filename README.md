@@ -30,7 +30,7 @@ This project uses PostgreSQL with Drizzle ORM.
 1. Make sure you have a PostgreSQL database set up.
 2. Update your `apps/server/.env` file with your PostgreSQL connection details.
 
-3. Apply the schema to your database:
+3. Apply the schema to a local development database:
 
 ```bash
 bun run db:push
@@ -72,6 +72,38 @@ shared budget for unknown clients.
   evidence is reported and never silently re-hashed.
 - Use a separate test database (`TEST_DATABASE_URL`, pathname marked `test`); tests skip unless
   isolated, never against dev/production data.
+
+## Production deployment
+
+Deploy the web application and API separately:
+
+- **Vercel:** Create one Git project with `apps/web` as its root directory, framework set to
+  Vite, build command `bun run build`, and output directory `dist`. The committed
+  `apps/web/vercel.json` rewrites direct TanStack Router URLs to `index.html`. Configure
+  `NODE_ENV=production`, `SERVER_URL` (the Render API origin, without `/trpc`),
+  `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SOLANA_EXPLORER_CLUSTER`. Do not configure
+  service-role, AI, database, or Solana signer secrets in Vercel.
+- **Render:** Create a paid, always-on native Bun web service from the repository root. Set
+  `BUN_VERSION=1.4.2`, build with
+  `bun install --frozen-lockfile && bun run --filter server build`, and start with
+  `bun run --cwd apps/server start`. Render supplies `PORT`; the server binds it on
+  `0.0.0.0`. Use `/` as the HTTP health check.
+- **Render secrets:** Set `NODE_ENV=production`, `CORS_ORIGIN` to the single production Vercel
+  origin, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `AI_API_KEY`,
+  `AI_API_BASE_URL`, `AI_VISION_MODEL`, `SOLANA_CLUSTER`, `SOLANA_RPC_URL`, and
+  `SOLANA_SIGNER_SECRET`. Keep these values distinct from local and test environments.
+- **Database:** Before directing traffic to Render, run
+  `bun run --cwd packages/db db:migrate:deploy` with production database credentials. Never
+  run `db:push` against hosted data. Resolve the duplicate-photo preflight described above
+  before applying its migration.
+- **Supabase:** Set the Auth Site URL to the production Vercel origin and allow the exact
+  `/auth/callback` URL for Google OAuth. The Render service role must be able to access the
+  private `asset-photos` bucket. Provision and fund the configured Solana signer and verify
+  its RPC endpoint before publishing passports.
+
+After deployment, confirm the Render health endpoint, a Vercel deep link, a signed photo upload,
+and public passport verification. The API service also runs the durable inspection, anchoring,
+and photo-cleanup worker, so it must remain continuously available.
 
 ## Verification
 

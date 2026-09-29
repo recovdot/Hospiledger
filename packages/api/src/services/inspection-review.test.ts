@@ -161,6 +161,38 @@ databaseTests("inspection and seller decisions", () => {
     expect(completed?.progress).toBeNull();
   });
 
+  test("stale worker progress cannot overwrite the current lease", async () => {
+    const asset = await fixture();
+    const { inspectionId } = await startInspection(deps(), asset);
+    jobsToDelete.add(inspectionId);
+    const stale = await lease(inspectionId);
+    await db.update(aiInspections).set({ progress: { stage: "recognition", done: 1, total: 3 } })
+      .where(eq(aiInspections.id, inspectionId));
+    await expect(runInspection(deps({
+      inspect: async (_request, hooks) => {
+        await db.update(backendJobs).set({ leaseOwner: crypto.randomUUID() })
+          .where(eq(backendJobs.targetId, inspectionId));
+        await hooks?.onProgress({ stage: "assessment", done: 2, total: 3 });
+        return outcome;
+      },
+    }), inspectionId, stale)).rejects.toBeInstanceOf(JobLeaseLostError);
+    const [unchanged] = await db.select().from(aiInspections).where(eq(aiInspections.id, inspectionId));
+    expect(unchanged?.progress).toEqual({ stage: "recognition", done: 1, total: 3 });
+
+    const active = await lease(inspectionId);
+    await runInspection(deps({
+      inspect: async (_request, hooks) => {
+        await hooks?.onProgress({ stage: "assessment", done: 2, total: 3 });
+        const [current] = await db.select().from(aiInspections).where(eq(aiInspections.id, inspectionId));
+        expect(current?.progress).toEqual({ stage: "assessment", done: 2, total: 3 });
+        return outcome;
+      },
+    }), inspectionId, active);
+    const [completed] = await db.select().from(aiInspections).where(eq(aiInspections.id, inspectionId));
+    expect(completed?.status).toBe("complete");
+    expect(completed?.progress).toBeNull();
+  });
+
   test("terminal failure is safe and linked; later unrelated inspection cannot replace the projected row", async () => {
     const asset = await fixture();
     const { inspectionId } = await startInspection(deps(), asset);

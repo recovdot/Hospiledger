@@ -6,7 +6,9 @@ import { eq, inArray } from "drizzle-orm";
 import { createJobRunner } from "../jobs/runner";
 import type { Logger } from "../logger";
 import type { AssetPhotoStorage } from "../storage/asset-photos";
-import { confirmPhotoUpload, createPhotoUploadUrl, repairLegacyPhoto, runDeletePhoto, sweepExpiredPhotoReservations } from "./photos";
+import {
+  confirmPhotoUpload, createPhotoUploadUrl, repairLegacyPhoto, retryFailedPhotoDeletions, runDeletePhoto, sweepExpiredPhotoReservations,
+} from "./photos";
 
 const testUrl = process.env.TEST_DATABASE_URL;
 const isolated = testUrl && testUrl !== process.env.DATABASE_URL && /(?:^|[_-])test(?:[_-]|$)/i.test(new URL(testUrl).pathname);
@@ -128,6 +130,58 @@ databaseTests("photo evidence confirmation", () => {
     expect(await worker.workOnce()).toBe(true);
     expect(stored.objects.has(storagePath)).toBe(false);
     expect(await db.select().from(photoUploadReservations).where(eq(photoUploadReservations.storagePath, storagePath))).toEqual([]);
+  });
+
+  test("retries an exhausted unreferenced deletion after its cooldown and removes the reservation", async () => {
+    const { companyId, assetId } = await fixture();
+    const stored = memoryStorage();
+    const storagePath = await issueAndUpload(stored, companyId, assetId, "front");
+    await db.update(photoUploadReservations).set({ createdAt: new Date(0), expiresAt: new Date(0) })
+      .where(eq(photoUploadReservations.storagePath, storagePath));
+    await sweepExpiredPhotoReservations(db, new Date(3 * 60 * 60 * 1000));
+    stored.storage.removeObject = async () => { throw new Error("Storage temporarily unavailable"); };
+    const logger: Logger = { info: () => {}, warn: () => {}, error: () => {} };
+    const worker = createJobRunner(db, logger, {
+      inspection: { run: async () => { throw new Error("Unexpected inspection"); } },
+      anchor: { run: async () => { throw new Error("Unexpected anchor"); } },
+      delete_photo: { run: (path, lease) => runDeletePhoto({ db, storage: stored.storage, logger }, path, lease) },
+    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      expect(await worker.workOnce()).toBe(true);
+      if (attempt < 2) {
+        await db.update(backendJobs).set({ runAfter: new Date(0) })
+          .where(eq(backendJobs.targetId, storagePath));
+      }
+    }
+    const [failed] = await db.select().from(backendJobs).where(eq(backendJobs.targetId, storagePath));
+    expect(failed?.status).toBe("failed");
+    if (!failed) throw new Error("Missing failed deletion job");
+    expect(await retryFailedPhotoDeletions(db, new Date(failed.updatedAt.getTime() + 14 * 60 * 1000))).toBe(0);
+    stored.storage.removeObject = async (path) => { stored.objects.delete(path); stored.removed.push(path); };
+    expect(await retryFailedPhotoDeletions(db, new Date(failed.updatedAt.getTime() + 16 * 60 * 1000))).toBe(1);
+    expect(await worker.workOnce()).toBe(true);
+    expect(stored.objects.has(storagePath)).toBe(false);
+    expect(await db.select().from(photoUploadReservations).where(eq(photoUploadReservations.storagePath, storagePath))).toEqual([]);
+  });
+
+  test("retried deletion preserves photo bytes that became referenced", async () => {
+    const { companyId, assetId } = await fixture();
+    const stored = memoryStorage();
+    const storagePath = await issueAndUpload(stored, companyId, assetId, "front");
+    await confirmPhotoUpload(db, stored.storage, { companyId, assetId, type: "front", storagePath });
+    await db.insert(backendJobs).values({
+      kind: "delete_photo", targetId: storagePath, status: "failed", updatedAt: new Date(0),
+    });
+    const logger: Logger = { info: () => {}, warn: () => {}, error: () => {} };
+    const worker = createJobRunner(db, logger, {
+      inspection: { run: async () => { throw new Error("Unexpected inspection"); } },
+      anchor: { run: async () => { throw new Error("Unexpected anchor"); } },
+      delete_photo: { run: (path, lease) => runDeletePhoto({ db, storage: stored.storage, logger }, path, lease) },
+    });
+    expect(await retryFailedPhotoDeletions(db, new Date(16 * 60 * 1000))).toBe(1);
+    expect(await worker.workOnce()).toBe(true);
+    expect(stored.objects.has(storagePath)).toBe(true);
+    expect(stored.removed).toEqual([]);
   });
 
   test("legacy corruption is reported, never blessed with a newly computed hash", async () => {

@@ -13,10 +13,10 @@ import {
 } from "@hospiledger/shared";
 import { sha256HexOfBytes } from "@hospiledger/shared/hashing";
 import { TRPCError } from "@trpc/server";
-import { and, count, eq, isNull, lt } from "drizzle-orm";
+import { and, count, eq, isNull, lt, lte } from "drizzle-orm";
 
 import type { DbHandle } from "../db";
-import { enqueueBackendJob, type JobLease } from "../jobs/runner";
+import { enqueueBackendJob, retryBackendJob, type JobLease } from "../jobs/runner";
 import { validatePhoto } from "../lib/image";
 import type { Logger } from "../logger";
 import type { AssetPhotoStorage } from "../storage/asset-photos";
@@ -192,6 +192,23 @@ export async function sweepExpiredPhotoReservations(db: DbHandle, now = new Date
     .where(and(isNull(photoUploadReservations.consumedAt), lt(photoUploadReservations.createdAt, cutoff)));
   for (const reservation of expired) await enqueueBackendJob(db, "delete_photo", reservation.storagePath);
   return expired.length;
+}
+
+/** Requeues cooled-down failed photo deletions after transient storage failures.
+ * @param db database handle
+ * @param now current time for the sweep
+ * @returns number of failed deletions considered
+ */
+export async function retryFailedPhotoDeletions(db: DbHandle, now = new Date()): Promise<number> {
+  const cooldown = new Date(now.getTime() - 15 * 60 * 1000);
+  const failed = await db.select({ storagePath: backendJobs.targetId }).from(backendJobs)
+    .where(and(
+      eq(backendJobs.kind, "delete_photo"),
+      eq(backendJobs.status, "failed"),
+      lte(backendJobs.updatedAt, cooldown),
+    ));
+  for (const deletion of failed) await retryBackendJob(db, "delete_photo", deletion.storagePath);
+  return failed.length;
 }
 
 /** Deletes an unreferenced object outside SQL, guarded against stale workers and live evidence.
