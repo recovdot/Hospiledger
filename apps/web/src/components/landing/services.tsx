@@ -1,4 +1,4 @@
-import { GradientWord, Reveal, SectionShell, headingXl } from "./primitives";
+import { GradientWord, Reveal, SectionShell, headingXl } from "@/components/landing/primitives";
 
 const steps = [
   {
@@ -32,12 +32,13 @@ export default function Services() {
   return (
     <SectionShell id="layanan" tone="light">
       <Reveal>
+        <p className="landing-eyebrow">CARA KERJA</p>
         <h2 className={`${headingXl} max-w-4xl`}>
           Dari foto menjadi <GradientWord>passport terverifikasi.</GradientWord>
         </h2>
       </Reveal>
       <Reveal delay={0.15} className="mt-14">
-        <div className="rounded-t-[28px] bg-white px-8 md:px-14">
+        <div className="rounded-[28px] bg-white px-8 md:px-14">
           {steps.map(({ number, title, body }) => (
             <div
               key={number}

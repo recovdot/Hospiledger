@@ -19,9 +19,9 @@ export default function Navbar() {
       initial={{ y: -72, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="sticky top-0 z-40 bg-canvas/90 text-black backdrop-blur"
+      className="sticky top-0 z-40 border-b border-black/8 bg-canvas/90 text-black backdrop-blur"
     >
-      <div className="mx-auto flex h-[72px] max-w-5xl items-center justify-between px-5">
+      <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-5 md:px-8">
         <span className="font-bold tracking-tight">HospiLedger</span>
         <nav className="hidden gap-8 md:flex">
           {links.map(({ href, label }) => (

@@ -21,7 +21,7 @@ export function ActionButton({
     <Link
       to={to}
       className={cn(
-        "inline-flex rounded-full px-6 py-3 text-base transition-colors duration-300",
+        "inline-flex min-h-12 items-center justify-center gap-3 rounded-full px-6 py-3 text-base font-medium transition-colors duration-300",
         variant === "primary" && "bg-brand text-white hover:bg-brand-active",
         variant === "outline" &&
           (dark
@@ -49,7 +49,7 @@ export function SectionShell({
     <section
       id={id}
       className={cn(
-        "py-16 md:py-24",
+        "scroll-mt-24 py-16 md:py-24",
         tone === "light" ? "bg-canvas text-black" : "bg-stage text-white",
         className,
       )}

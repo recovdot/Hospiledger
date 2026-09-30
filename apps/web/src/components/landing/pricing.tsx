@@ -1,4 +1,4 @@
-import { ActionButton, GradientWord, HoverCard, Reveal, SectionShell, headingXl } from "./primitives";
+import { ActionButton, GradientWord, HoverCard, Reveal, SectionShell, headingXl } from "@/components/landing/primitives";
 
 const tiers = [
   {
@@ -33,19 +33,20 @@ export default function Pricing() {
   return (
     <SectionShell id="harga" tone="light">
       <Reveal>
+        <p className="landing-eyebrow">PILIH SESUAI KEBUTUHAN</p>
         <h2 className={`${headingXl} max-w-4xl`}>
           Harga yang jujur <GradientWord>dari awal.</GradientWord>
         </h2>
       </Reveal>
-      <div className="mt-14 grid gap-5 md:grid-cols-3">
+      <div className="pricing-grid mt-14 grid gap-5 lg:grid-cols-3">
         {tiers.map(({ name, price, period, features, popular }, index) => (
           <HoverCard
             key={name}
             delay={index * 0.1}
             className={
               popular
-                ? "relative rounded-[28px] border-2 border-brand bg-white p-10 text-black"
-                : "relative rounded-[28px] border border-black/8 bg-white p-10 text-black"
+                ? "pricing-card relative rounded-[28px] border-2 border-brand bg-white p-10 text-black"
+                : "pricing-card relative rounded-[28px] border border-black/8 bg-white p-10 text-black"
             }
           >
             {popular && (
@@ -55,7 +56,7 @@ export default function Pricing() {
             )}
             <h3 className="text-xl text-ink-muted">{name}</h3>
             <p className="mt-6 tracking-tight">
-              <span className="text-4xl md:text-5xl">{price}</span>
+              <span className="text-4xl xl:text-5xl">{price}</span>
               {period && <span className="text-ink-muted"> {period}</span>}
             </p>
             <ul className="mt-8 space-y-3 text-ink-muted md:text-lg">
@@ -65,7 +66,7 @@ export default function Pricing() {
                 </li>
               ))}
             </ul>
-            <div className="mt-10">
+            <div className="pricing-action mt-10">
               <ActionButton variant={popular ? "primary" : "outline"} to="/register">
                 {popular
                   ? "Pilih Seller Pro"

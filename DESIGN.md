@@ -6,6 +6,33 @@ The landing page (`apps/web/src/components/landing/`) adapts this Krepling
 system. Coding rules below are binding for landing work; the rest of this
 document is the original Krepling reference.
 
+### Visual refresh — landing page
+
+This section supersedes the previous hero composition below. Routes, API calls,
+pricing terms, and authentication behavior remain unchanged.
+
+- Scope styles beneath `.landing-page`; preserve the light marketing canvas even
+  when the application theme is dark. Muted text uses #6c6b6b on light surfaces.
+- Hero: two columns at 1024px (1.05fr / 1fr), 48px gap; stacked below.
+  Heading uses clamp(3rem, 5.3vw, 4.6rem), line-height 1.04, tracking -0.055em.
+- Showcase: existing pastel gradient, 28px radius, 24px padding (16px mobile),
+  a native SVG equipment illustration and a white passport example. The example
+  is explicitly labeled and shows AI provenance, seller approval, and a range.
+- Hero accent: #8f2fd6 → #7048e8, suitable on the light canvas. The same darker
+  gradient is used for light-section headings; dark sections keep the pastel.
+- Eyebrows: 11px, weight 600, tracking .14em, 20px bottom margin.
+- Hero body: 18px / 1.75, max-width 460px. Actions: 24px gap, 28px top margin.
+- Showcase SVG: max-height 250px; metrics use two equal columns with 20px gap;
+  white preview radius 20px, padding 24px (16px on mobile).
+- No new image requests, external fonts, or third-party assets.
+- Feature panels retain their full-width stack, with a quiet outline and a
+  decorative line on the right on wide screens. Pricing uses equal-height cards
+  and aligned CTA rows; horizontal padding reduces to 24px on tablet. Pricing
+  stacks below 1024px; its display type grows to 48px only at 1280px.
+  The floating section switcher is shown only from 1280px to avoid overlap.
+- Marketing links and buttons have a visible focus ring. Reduced motion uses
+  MotionConfig and disables CSS smooth transitions where requested.
+
 ### Tokens in code
 
 | Token | Value | Where |

@@ -16,11 +16,11 @@ export default function Footer() {
         <div className="flex flex-col gap-10 md:flex-row md:justify-between">
           <div className="max-w-sm">
             <span className="font-bold tracking-tight">HospiLedger</span>
-            <p className="mt-2 text-ink-muted">Asset trust builds opportunity.</p>
+            <p className="mt-2 text-ink-muted-dark">Asset trust builds opportunity.</p>
           </div>
           <div className="flex gap-16 md:gap-24">
             <div>
-              <h3 className="text-sm text-ink-muted">Produk</h3>
+              <h3 className="text-sm text-ink-muted-dark">Produk</h3>
               <ul className="mt-4 space-y-3">
                 {productLinks.map(({ href, label }) => (
                   <li key={href}>
@@ -32,7 +32,7 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <h3 className="text-sm text-ink-muted">Perusahaan</h3>
+              <h3 className="text-sm text-ink-muted-dark">Perusahaan</h3>
               <ul className="mt-4 space-y-3">
                 {companyLinks.map(({ href, label }) => (
                   <li key={href}>
@@ -45,7 +45,7 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <div className="mt-20 flex flex-col gap-2 border-t border-white/10 pt-6 text-sm text-ink-muted md:flex-row md:items-center md:justify-between">
+        <div className="mt-20 flex flex-col gap-2 border-t border-white/10 pt-6 text-sm text-ink-muted-dark md:flex-row md:items-center md:justify-between">
           <span>© 2026 HospiLedger</span>
           <span>Tercatat di Solana — integritas dapat diverifikasi ulang.</span>
         </div>

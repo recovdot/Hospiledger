@@ -35,7 +35,7 @@ export function SectionSwitcher() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut", delay: 0.6 }}
-      className="fixed right-5 bottom-5 z-40 hidden flex-col gap-2 md:flex"
+      className="fixed right-5 bottom-5 z-40 hidden flex-col gap-2 xl:flex"
     >
       {(() => {
         const activeTone =

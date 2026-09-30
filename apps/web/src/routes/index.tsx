@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   return (
     <MotionConfig reducedMotion="user">
-      <main className="relative">
+      <main className="landing-page relative">
         <Navbar />
         <Hero />
         <Promo />
